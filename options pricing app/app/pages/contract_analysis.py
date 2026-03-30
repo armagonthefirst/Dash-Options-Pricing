@@ -5,9 +5,8 @@ from urllib.parse import quote, unquote
 import plotly.graph_objects as go
 from dash import dcc, html, register_page
 
-from data.mock_data import (
+from data.data_source import (
     get_contract_snapshot,
-    get_default_expiry,
     get_payoff_curve,
     get_sensitivity_curve,
     get_supported_tickers,
@@ -78,6 +77,30 @@ def build_detail_row(label: str, value: str) -> html.Div:
     )
 
 
+def make_empty_figure(title: str, message: str) -> go.Figure:
+    fig = go.Figure()
+    fig.update_layout(
+        template="plotly_dark",
+        title=title,
+        margin=dict(l=30, r=20, t=55, b=30),
+        height=340,
+        annotations=[
+            dict(
+                text=message,
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+            )
+        ],
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        showlegend=False,
+    )
+    return fig
+
+
 def make_price_comparison_figure(snapshot: dict) -> go.Figure:
     labels = ["Market Mid", "Theoretical", "Black-Scholes"]
     values = [
@@ -111,7 +134,10 @@ def make_price_comparison_figure(snapshot: dict) -> go.Figure:
 
 
 def make_payoff_figure(ticker: str, contract_id: str | None) -> go.Figure:
-    df = get_payoff_curve(ticker, contract_id).copy()
+    try:
+        df = get_payoff_curve(ticker, contract_id).copy()
+    except Exception as exc:
+        return make_empty_figure("Payoff at Expiry", f"Unavailable: {exc}")
 
     fig = go.Figure()
     fig.add_trace(
@@ -138,7 +164,10 @@ def make_payoff_figure(ticker: str, contract_id: str | None) -> go.Figure:
 
 
 def make_vol_sensitivity_figure(ticker: str, contract_id: str | None) -> go.Figure:
-    df = get_sensitivity_curve(ticker, contract_id, sensitivity_type="vol").copy()
+    try:
+        df = get_sensitivity_curve(ticker, contract_id, sensitivity_type="vol").copy()
+    except Exception as exc:
+        return make_empty_figure("Option Value vs Volatility", f"Unavailable: {exc}")
 
     fig = go.Figure()
     fig.add_trace(
@@ -165,7 +194,10 @@ def make_vol_sensitivity_figure(ticker: str, contract_id: str | None) -> go.Figu
 
 
 def make_spot_sensitivity_figure(ticker: str, contract_id: str | None) -> go.Figure:
-    df = get_sensitivity_curve(ticker, contract_id, sensitivity_type="spot").copy()
+    try:
+        df = get_sensitivity_curve(ticker, contract_id, sensitivity_type="spot").copy()
+    except Exception as exc:
+        return make_empty_figure("Option Value vs Underlying Price", f"Unavailable: {exc}")
 
     fig = go.Figure()
     fig.add_trace(
@@ -230,8 +262,8 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                             html.H1(contract_title, className="page-title"),
                             html.P(
                                 (
-                                    "Single-contract valuation view with market quote context, "
-                                    "placeholder theoretical pricing, Greeks, and sensitivity charts."
+                                    "Single-contract valuation view with live market quote context, "
+                                    "provisional theoretical pricing, Greeks, and sensitivity charts."
                                 ),
                                 className="page-description",
                             ),
@@ -263,7 +295,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                     build_stat_card(
                         "Theoretical Price",
                         format_currency(snapshot["theoretical_price"]),
-                        subtext="Temporary stand-in until binomial pricing is added",
+                        subtext="Forecast-vol stand-in until binomial pricing is added",
                     ),
                     build_stat_card(
                         "Black-Scholes Benchmark",
@@ -374,9 +406,10 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                     html.H2("Current Build Note", className="section-title"),
                     html.P(
                         (
-                            "This page is currently using mock contract data and a placeholder "
-                            "theoretical pricing layer. The binomial American option pricer will "
-                            "replace the temporary theoretical price in the next implementation stage."
+                            "This page now uses live market quotes with a temporary theoretical "
+                            "pricing layer based on the volatility forecast. The American-option "
+                            "binomial pricer will replace the provisional theoretical price in the "
+                            "next implementation stage."
                         ),
                         className="section-description",
                     ),

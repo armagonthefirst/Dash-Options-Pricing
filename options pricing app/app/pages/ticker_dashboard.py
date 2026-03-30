@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Input, Output, callback, dcc, html, register_page
+from dash import Input, Output, callback, dcc, html, no_update, register_page
 
 from data.data_source import (
     get_default_expiry,
@@ -85,6 +85,29 @@ def build_kpi_grid(kpis: dict) -> list[html.Div]:
             subtext=f"IV - Forecast Spread: {format_signed_pct(kpis['iv_forecast_spread'])}",
         ),
     ]
+
+
+def make_empty_figure(title: str, message: str = "Live data unavailable") -> go.Figure:
+    fig = go.Figure()
+    fig.update_layout(
+        template="plotly_dark",
+        title=title,
+        margin=dict(l=30, r=20, t=55, b=30),
+        height=320,
+        annotations=[
+            dict(
+                text=message,
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+            )
+        ],
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+    )
+    return fig
 
 
 def make_price_figure(ticker: str) -> go.Figure:
@@ -251,6 +274,13 @@ def make_smile_figure(ticker: str, expiry: str) -> go.Figure:
     return fig
 
 
+def build_dashboard_error_state(message: str) -> html.Div:
+    return html.Div(
+        className="empty-state",
+        children=f"Live data temporarily unavailable: {message}",
+    )
+
+
 def build_chain_table(ticker: str, chain_df: pd.DataFrame) -> html.Div:
     if chain_df.empty:
         return html.Div(
@@ -341,20 +371,54 @@ def build_ticker_selector(current_ticker: str) -> html.Div:
 
 def layout(ticker: str | None = None, **kwargs) -> html.Div:
     ticker = get_valid_ticker(ticker)
-    kpis = get_ticker_kpis(ticker)
-    default_expiry = kpis["default_expiry"]
-    initial_chain = get_filtered_option_chain(
-        ticker=ticker,
-        expiry=default_expiry,
-        option_type="both",
-        moneyness_bucket="0.85-1.15",
-        sort_by="strike",
-    )
-    initial_summary = (
-        f"{len(initial_chain)} contracts shown | "
-        f"Expiry: {default_expiry} | "
-        "Type: Both"
-    )
+
+    try:
+        kpis = get_ticker_kpis(ticker)
+        default_expiry = kpis["default_expiry"]
+        expiry_options = get_expiry_choices(ticker)
+        initial_chain = get_filtered_option_chain(
+            ticker=ticker,
+            expiry=default_expiry,
+            option_type="both",
+            moneyness_bucket="0.85-1.15",
+            sort_by="strike",
+        )
+        initial_summary = (
+            f"{len(initial_chain)} contracts shown | "
+            f"Expiry: {default_expiry} | "
+            "Type: Both"
+        )
+
+        page_description = (
+            f"{kpis['name']} | Ticker-level volatility context, "
+            "implied volatility structure, and option-chain exploration."
+        )
+        last_refresh = kpis["last_refresh"]
+        kpi_children = build_kpi_grid(kpis)
+        price_figure = make_price_figure(ticker)
+        vol_figure = make_volatility_figure(ticker)
+        term_figure = make_term_structure_figure(ticker)
+        smile_figure = make_smile_figure(ticker, default_expiry)
+        chain_children = build_chain_table(ticker, initial_chain)
+    except Exception as exc:
+        default_expiry = None
+        expiry_options = []
+        initial_summary = "Live data temporarily unavailable."
+        page_description = "Ticker-level volatility context is temporarily unavailable."
+        last_refresh = "Unavailable"
+        kpi_children = [
+            build_kpi_card(
+                "Live Data Status",
+                "Unavailable",
+                subtext="Try refreshing the page or switching ticker.",
+                accent_class="negative",
+            )
+        ]
+        price_figure = make_empty_figure("Price History")
+        vol_figure = make_empty_figure("Rolling Volatility Regime")
+        term_figure = make_empty_figure("ATM IV Term Structure")
+        smile_figure = make_empty_figure("IV Smile / Skew")
+        chain_children = build_dashboard_error_state(str(exc))
 
     return html.Div(
         className="page ticker-dashboard-page",
@@ -373,10 +437,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                                 className="page-title",
                             ),
                             html.P(
-                                (
-                                    f"{kpis['name']} | Ticker-level volatility context, "
-                                    "implied volatility structure, and option-chain exploration."
-                                ),
+                                page_description,
                                 id="dashboard-page-description",
                                 className="page-description",
                             ),
@@ -390,7 +451,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                                 className="header-note-card",
                                 children=[
                                     html.Div("Last Refresh", className="note-label"),
-                                    html.Div(kpis["last_refresh"], id="dashboard-last-refresh", className="note-value"),
+                                    html.Div(last_refresh, id="dashboard-last-refresh", className="note-value"),
                                 ],
                             ),
                         ],
@@ -400,7 +461,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
             html.Div(
                 id="dashboard-kpi-grid",
                 className="kpi-grid",
-                children=build_kpi_grid(kpis),
+                children=kpi_children,
             ),
             html.Div(
                 className="chart-grid chart-grid-top",
@@ -410,7 +471,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                         children=[
                             dcc.Graph(
                                 id="price-history-chart",
-                                figure=make_price_figure(ticker),
+                                figure=price_figure,
                                 config={"displayModeBar": False},
                             )
                         ],
@@ -420,7 +481,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                         children=[
                             dcc.Graph(
                                 id="volatility-regime-chart",
-                                figure=make_volatility_figure(ticker),
+                                figure=vol_figure,
                                 config={"displayModeBar": False},
                             )
                         ],
@@ -435,7 +496,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                         children=[
                             dcc.Graph(
                                 id="term-structure-chart",
-                                figure=make_term_structure_figure(ticker),
+                                figure=term_figure,
                                 config={"displayModeBar": False},
                             )
                         ],
@@ -445,7 +506,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                         children=[
                             dcc.Graph(
                                 id="iv-smile-chart",
-                                figure=make_smile_figure(ticker, default_expiry),
+                                figure=smile_figure,
                                 config={"displayModeBar": False},
                             )
                         ],
@@ -484,7 +545,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                                     html.Div("Expiry", className="control-label"),
                                     dcc.Dropdown(
                                         id="dashboard-expiry-dropdown",
-                                        options=get_expiry_choices(ticker),
+                                        options=expiry_options,
                                         value=default_expiry,
                                         clearable=False,
                                         className="dashboard-dropdown",
@@ -546,7 +607,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                             ),
                         ],
                     ),
-                    html.Div(id="option-chain-container", children=build_chain_table(ticker, initial_chain)),
+                    html.Div(id="option-chain-container", children=chain_children),
                 ],
             ),
         ],
@@ -588,38 +649,62 @@ def update_dashboard_content(
     sort_by: str,
 ):
     ticker = get_valid_ticker(ticker)
-    kpis = get_ticker_kpis(ticker)
-    expiry_options = get_expiry_choices(ticker)
 
-    available_expiries = {item["value"] for item in expiry_options}
-    if not selected_expiry or selected_expiry not in available_expiries:
-        selected_expiry = get_default_expiry(ticker)
+    try:
+        kpis = get_ticker_kpis(ticker)
+        expiry_options = get_expiry_choices(ticker)
 
-    filtered_chain = get_filtered_option_chain(
-        ticker=ticker,
-        expiry=selected_expiry,
-        option_type=option_type,
-        moneyness_bucket=moneyness_bucket,
-        sort_by=sort_by,
-    )
+        available_expiries = {item["value"] for item in expiry_options}
+        if not selected_expiry or selected_expiry not in available_expiries:
+            selected_expiry = get_default_expiry(ticker)
 
-    summary_text = (
-        f"{len(filtered_chain)} contracts shown | "
-        f"Expiry: {selected_expiry} | "
-        f"Type: {option_type.title()}"
-    )
+        filtered_chain = get_filtered_option_chain(
+            ticker=ticker,
+            expiry=selected_expiry,
+            option_type=option_type,
+            moneyness_bucket=moneyness_bucket,
+            sort_by=sort_by,
+        )
 
-    return (
-        f"{ticker} Dashboard",
-        f"{kpis['name']} | Ticker-level volatility context, implied volatility structure, and option-chain exploration.",
-        kpis["last_refresh"],
-        build_kpi_grid(kpis),
-        expiry_options,
-        selected_expiry,
-        make_price_figure(ticker),
-        make_volatility_figure(ticker),
-        make_term_structure_figure(ticker),
-        make_smile_figure(ticker, selected_expiry),
-        summary_text,
-        build_chain_table(ticker, filtered_chain),
-    )
+        summary_text = (
+            f"{len(filtered_chain)} contracts shown | "
+            f"Expiry: {selected_expiry} | "
+            f"Type: {option_type.title()}"
+        )
+
+        return (
+            f"{ticker} Dashboard",
+            f"{kpis['name']} | Ticker-level volatility context, implied volatility structure, and option-chain exploration.",
+            kpis["last_refresh"],
+            build_kpi_grid(kpis),
+            expiry_options,
+            selected_expiry,
+            make_price_figure(ticker),
+            make_volatility_figure(ticker),
+            make_term_structure_figure(ticker),
+            make_smile_figure(ticker, selected_expiry),
+            summary_text,
+            build_chain_table(ticker, filtered_chain),
+        )
+    except Exception as exc:
+        return (
+            f"{ticker} Dashboard",
+            "Live data temporarily unavailable.",
+            "Unavailable",
+            [
+                build_kpi_card(
+                    "Live Data Status",
+                    "Unavailable",
+                    subtext="Previous data may be stale. Try refreshing.",
+                    accent_class="negative",
+                )
+            ],
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            f"Live data temporarily unavailable: {exc}",
+            build_dashboard_error_state(str(exc)),
+        )

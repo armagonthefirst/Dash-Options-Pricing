@@ -98,9 +98,33 @@ def build_ticker_card(row: dict) -> html.Div:
     )
 
 
+def build_screener_error_state(message: str) -> html.Div:
+    return html.Div(
+        className="section-card",
+        children=[
+            html.H2("Live Screener Unavailable", className="section-title"),
+            html.P(
+                "The live market feed could not be loaded right now.",
+                className="section-description",
+            ),
+            html.Div(message, className="empty-state"),
+        ],
+    )
+
+
 def layout() -> html.Div:
-    screener_df = get_screener_data()
-    screener_rows = screener_df.to_dict("records")
+    try:
+        screener_df = get_screener_data()
+        screener_rows = screener_df.to_dict("records")
+        universe_value = f"{len(screener_rows)} tickers"
+        ticker_grid = html.Div(
+            className="ticker-grid",
+            children=[build_ticker_card(row) for row in screener_rows],
+        )
+    except Exception as exc:
+        screener_rows = []
+        universe_value = "Unavailable"
+        ticker_grid = build_screener_error_state(str(exc))
 
     return html.Div(
         className="page screener-page",
@@ -126,7 +150,7 @@ def layout() -> html.Div:
                         className="page-header-note",
                         children=[
                             html.Div("Universe Size", className="note-label"),
-                            html.Div(f"{len(screener_rows)} tickers", className="note-value"),
+                            html.Div(universe_value, className="note-value"),
                         ],
                     ),
                 ],
@@ -157,9 +181,6 @@ def layout() -> html.Div:
                     ),
                 ],
             ),
-            html.Div(
-                className="ticker-grid",
-                children=[build_ticker_card(row) for row in screener_rows],
-            ),
+            ticker_grid,
         ],
     )

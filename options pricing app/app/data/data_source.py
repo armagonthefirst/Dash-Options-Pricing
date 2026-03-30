@@ -20,15 +20,23 @@ if USE_LIVE_DATA:
         get_live_ticker_kpis as get_ticker_kpis,
         get_live_volatility_chart_frame as get_volatility_chart_frame,
     )
+    from data.contract_analytics import (
+        get_live_contract_snapshot as get_contract_snapshot,
+        get_live_payoff_curve as get_payoff_curve,
+        get_live_sensitivity_curve as get_sensitivity_curve,
+    )
 else:
     from data.mock_data import (
+        get_contract_snapshot,
         get_default_expiry,
         get_expiry_choices,
         get_iv_smile,
         get_iv_term_structure,
         get_option_chain,
+        get_payoff_curve,
         get_price_chart_frame,
         get_screener_data,
+        get_sensitivity_curve,
         get_supported_tickers,
         get_ticker_kpis,
         get_volatility_chart_frame,
