@@ -1,8 +1,13 @@
 from pathlib import Path
+from threading import Thread
+from time import sleep
 
 from dash import Dash
 
 from layout import create_layout
+from data.analytics import clear_analytics_cache
+from data.contract_analytics import clear_contract_analytics_cache
+from data.market_data import clear_market_data_cache
 
 # Resolve project paths
 APP_DIR = Path(__file__).resolve().parent
@@ -23,6 +28,25 @@ server = app.server
 # Use a callable layout so Dash rebuilds it cleanly on refresh
 app.layout = create_layout
 
+# ---------------------------------------------------------------------------
+# Periodic cache refresh
+# ---------------------------------------------------------------------------
+CACHE_REFRESH_SECONDS = 60 * 60  # 1 hour
+
+
+def _clear_all_caches() -> None:
+    clear_market_data_cache()
+    clear_analytics_cache()
+    clear_contract_analytics_cache()
+
+
+def _cache_refresh_loop() -> None:
+    while True:
+        sleep(CACHE_REFRESH_SECONDS)
+        _clear_all_caches()
+
 
 if __name__ == "__main__":
+    refresh_thread = Thread(target=_cache_refresh_loop, daemon=True)
+    refresh_thread.start()
     app.run(debug=True)

@@ -15,6 +15,7 @@ from data.analytics import (
     get_live_usable_expiries,
 )
 from data.market_data import DataUnavailableError
+from data.pricing import price_american_option_binomial
 
 
 RISK_FREE_RATE = 0.04
@@ -206,15 +207,17 @@ def _build_snapshot_from_row(ticker: str, row: dict) -> dict:
         volatility=contract_iv,
         option_type=option_type,
     )
-    theoretical_metrics = _black_scholes_metrics(
+    theoretical_price = price_american_option_binomial(
         spot=spot,
         strike=strike,
         time_to_expiry=time_to_expiry,
+        risk_free_rate=RISK_FREE_RATE,
         volatility=forecast_vol,
+        dividend_yield=DIVIDEND_YIELD,
         option_type=option_type,
     )
 
-    pricing_gap = theoretical_metrics["price"] - market_mid
+    pricing_gap = theoretical_price - market_mid
     pricing_gap_pct = pricing_gap / market_mid if market_mid > 0 else np.nan
 
     return {
@@ -231,7 +234,7 @@ def _build_snapshot_from_row(ticker: str, row: dict) -> dict:
         "iv": contract_iv,
         "dte": dte,
         "forecast_vol": forecast_vol,
-        "theoretical_price": float(theoretical_metrics["price"]),
+        "theoretical_price": float(theoretical_price),
         "benchmark_price": float(benchmark_metrics["price"]),
         "pricing_gap": float(pricing_gap),
         "pricing_gap_pct": float(pricing_gap_pct) if pd.notna(pricing_gap_pct) else np.nan,
@@ -301,26 +304,30 @@ def get_live_sensitivity_curve(
         upper = max(lower + 0.05, min(1.50, base_high * 1.5))
         grid = np.linspace(lower, upper, SENSITIVITY_GRID_POINTS)
         values = [
-            _black_scholes_metrics(
+            price_american_option_binomial(
                 spot=spot,
                 strike=strike,
                 time_to_expiry=time_to_expiry,
+                risk_free_rate=RISK_FREE_RATE,
                 volatility=float(vol),
+                dividend_yield=DIVIDEND_YIELD,
                 option_type=option_type,
-            )["price"]
+            )
             for vol in grid
         ]
         return pd.DataFrame({"volatility": grid, "option_value": values})
 
     grid = np.linspace(spot * 0.70, spot * 1.30, SENSITIVITY_GRID_POINTS)
     values = [
-        _black_scholes_metrics(
+        price_american_option_binomial(
             spot=float(s),
             strike=strike,
             time_to_expiry=time_to_expiry,
+            risk_free_rate=RISK_FREE_RATE,
             volatility=forecast_vol,
+            dividend_yield=DIVIDEND_YIELD,
             option_type=option_type,
-        )["price"]
+        )
         for s in grid
     ]
     return pd.DataFrame({"underlying_price": grid, "option_value": values})

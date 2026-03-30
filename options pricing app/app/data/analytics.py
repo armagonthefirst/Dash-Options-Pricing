@@ -192,18 +192,41 @@ def _get_live_expiry_usability_snapshot(ticker: str, expiry: str) -> dict:
 
 
 @lru_cache(maxsize=128)
-def get_live_usable_expiries(ticker: str) -> tuple[str, ...]:
-    ticker = _validate_ticker(ticker)
-    usable = []
+def get_live_usable_expiries(ticker: str, max_usable: int = 5) -> tuple[str, ...]:
+    """
+    Return usable expiries, checking at most enough to find ``max_usable``.
 
-    for expiry in get_live_expiries(ticker):
+    Expiries are sorted by proximity to TARGET_DTE so the most relevant
+    ones are tested first, avoiding expensive usability checks on all
+    available expiries.
+    """
+    ticker = _validate_ticker(ticker)
+
+    all_expiries = list(get_live_expiries(ticker))
+
+    # Sort by proximity to target DTE so we check the most useful ones first.
+    def _dte_distance(expiry: str) -> int:
+        try:
+            dte = int((pd.Timestamp(expiry).normalize() - pd.Timestamp.today().normalize()).days)
+            return abs(dte - TARGET_DTE)
+        except Exception:
+            return 9999
+
+    all_expiries.sort(key=_dte_distance)
+
+    usable = []
+    for expiry in all_expiries:
         snapshot = _get_live_expiry_usability_snapshot(ticker, expiry)
         if snapshot["is_usable"]:
             usable.append(expiry)
+            if len(usable) >= max_usable:
+                break
 
     if not usable:
         raise DataUnavailableError(f"No usable expiries found for {ticker}.")
 
+    # Return sorted by date for consistent downstream ordering.
+    usable.sort()
     return tuple(usable)
 
 

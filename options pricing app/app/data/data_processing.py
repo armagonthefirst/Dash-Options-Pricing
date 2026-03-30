@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from data.market_data import DataUnavailableError
+from data.pricing import implied_vol_from_price
 
 
 TRADING_DAYS = 252
@@ -234,6 +235,7 @@ def normalize_option_chain(
     min_valid_iv: float = MIN_VALID_IV,
     max_valid_iv: float = MAX_VALID_IV,
     max_relative_spread: float | None = MAX_RELATIVE_SPREAD,
+    max_near_atm: int | None = 25,
 ) -> pd.DataFrame:
     """
     Merge and normalize raw yfinance calls/puts into one standard chain frame.
@@ -292,7 +294,55 @@ def normalize_option_chain(
     out["dte"] = dte
     out["spot"] = float(spot)
     out["moneyness"] = out["strike"] / float(spot)
+
+    # Trim to the N contracts closest to ATM (by moneyness distance) to
+    # limit the number of IV solves during off-hours.  Setting
+    # max_near_atm=None keeps the full chain.
+    if max_near_atm is not None and len(out) > max_near_atm:
+        out["_atm_distance"] = (out["moneyness"] - 1.0).abs()
+        out = out.nsmallest(max_near_atm, "_atm_distance").copy()
+        out = out.drop(columns=["_atm_distance"])
+
+    # When bid and ask are both zero or missing (common outside market hours),
+    # fall back to lastPrice so that off-hours data is still usable.
+    bid_zero_or_nan = out["bid"].fillna(0.0) <= 0.0
+    ask_zero_or_nan = out["ask"].fillna(0.0) <= 0.0
+    last_valid = out["lastPrice"].fillna(0.0) > 0.0
+    use_last = bid_zero_or_nan & ask_zero_or_nan & last_valid
+
     out["mid"] = (out["bid"] + out["ask"]) / 2.0
+    out.loc[use_last, "bid"] = out.loc[use_last, "lastPrice"]
+    out.loc[use_last, "ask"] = out.loc[use_last, "lastPrice"]
+    out.loc[use_last, "mid"] = out.loc[use_last, "lastPrice"]
+
+    # When the lastPrice fallback was triggered, yfinance IV is likely stale.
+    # Back-solve implied volatility from lastPrice using the binomial pricer.
+    IV_SOLVE_RISK_FREE_RATE = 0.04
+    IV_SOLVE_DIVIDEND_YIELD = 0.0
+
+    if use_last.any():
+        rows_to_solve = out.loc[use_last].copy()
+        solved_ivs = []
+
+        for _, row in rows_to_solve.iterrows():
+            time_to_expiry = max(float(row["dte"]) / 365.0, 1.0 / 365.0)
+            option_type = str(row["type"]).strip().lower()
+
+            solved = implied_vol_from_price(
+                market_price=float(row["lastPrice"]),
+                spot=float(row["spot"]),
+                strike=float(row["strike"]),
+                time_to_expiry=time_to_expiry,
+                risk_free_rate=IV_SOLVE_RISK_FREE_RATE,
+                dividend_yield=IV_SOLVE_DIVIDEND_YIELD,
+                option_type=option_type,
+            )
+            solved_ivs.append(solved)
+
+        out.loc[use_last, "impliedVolatility"] = [
+            iv if iv is not None else out.loc[idx, "impliedVolatility"]
+            for iv, idx in zip(solved_ivs, rows_to_solve.index)
+        ]
 
     out["ticker"] = out["contractSymbol"].astype(str).str.extract(r"^([A-Z]+)", expand=False)
     out["contract_id"] = out["contractSymbol"].fillna(

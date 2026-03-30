@@ -295,7 +295,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                     build_stat_card(
                         "Theoretical Price",
                         format_currency(snapshot["theoretical_price"]),
-                        subtext="Forecast-vol stand-in until binomial pricing is added",
+                        subtext="American binomial (CRR, 200 steps) with forecast vol",
                     ),
                     build_stat_card(
                         "Black-Scholes Benchmark",
@@ -406,10 +406,11 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                     html.H2("Current Build Note", className="section-title"),
                     html.P(
                         (
-                            "This page now uses live market quotes with a temporary theoretical "
-                            "pricing layer based on the volatility forecast. The American-option "
-                            "binomial pricer will replace the provisional theoretical price in the "
-                            "next implementation stage."
+                            "This page uses live market quotes with an American-option binomial "
+                            "pricer (CRR, 200 steps) for the theoretical price and sensitivity "
+                            "curves. Black-Scholes remains as the European benchmark. Greeks are "
+                            "currently Black-Scholes-based; binomial finite-difference Greeks "
+                            "will be added in the next implementation phase."
                         ),
                         className="section-description",
                     ),
