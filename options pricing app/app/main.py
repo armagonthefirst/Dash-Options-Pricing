@@ -5,7 +5,7 @@ from time import sleep
 from dash import Dash
 
 from layout import create_layout
-from data.analytics import clear_analytics_cache, get_live_screener_data
+from data.analytics import clear_analytics_cache, get_live_ticker_kpis, TICKER_ORDER
 from data.contract_analytics import clear_contract_analytics_cache
 from data.market_data import clear_market_data_cache
 
@@ -41,10 +41,13 @@ def _clear_all_caches() -> None:
 
 
 def _prewarm_cache() -> None:
-    try:
-        get_live_screener_data()
-    except Exception:
-        pass
+    sleep(15)  # let server stabilise before starting
+    for ticker in TICKER_ORDER:
+        try:
+            get_live_ticker_kpis(ticker)
+        except Exception:
+            pass
+        sleep(3)  # breathe between tickers to avoid CPU spike
 
 
 def _cache_refresh_loop() -> None:
