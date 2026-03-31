@@ -1,18 +1,14 @@
 from dash import dcc, html, page_container, page_registry
 
 
-APP_TITLE = "Options Pricing ML App"
-APP_SUBTITLE = (
-    "Volatility forecasting, option valuation, and market-vs-model analytics "
-    "for liquid U.S. equities and ETFs."
-)
+APP_TITLE = "Live Options Pricing Dashboard"
 
 
 def build_nav_links():
-    """
-    Build navigation links from Dash's page registry.
-    Home (/) is shown first, then the remaining pages alphabetically.
-    """
+    # Only show Overview (home) and Methodology in the nav bar.
+    # Ticker Dashboard and Contract Analysis are reached through the app flow.
+    NAV_PAGES = {"/", "/methodology"}
+
     if not page_registry:
         return [
             html.Span(
@@ -22,7 +18,7 @@ def build_nav_links():
         ]
 
     pages = sorted(
-        page_registry.values(),
+        (p for p in page_registry.values() if p["path"] in NAV_PAGES),
         key=lambda page: (0 if page["path"] == "/" else 1, page["name"]),
     )
 
@@ -36,6 +32,21 @@ def build_nav_links():
     ]
 
 
+def _market_status_badge():
+    """
+    Returns a badge showing market open/closed status.
+    Uses a clientside callback or static check.
+    """
+    return html.Div(
+        id="market-status-badge",
+        className="market-status-badge market-closed",
+        children=[
+            html.Span(className="status-dot"),
+            html.Span("Market Closed", id="market-status-text"),
+        ],
+    )
+
+
 def create_layout():
     return html.Div(
         className="app-shell",
@@ -47,16 +58,12 @@ def create_layout():
                         className="header-left",
                         children=[
                             html.H1(APP_TITLE, className="app-title"),
-                            html.P(APP_SUBTITLE, className="app-subtitle"),
                         ],
                     ),
                     html.Div(
                         className="header-right",
                         children=[
-                            html.Div(
-                                className="header-badge",
-                                children="Dash Prototype",
-                            )
+                            _market_status_badge(),
                         ],
                     ),
                 ],
@@ -68,7 +75,25 @@ def create_layout():
             html.Main(
                 className="app-main",
                 children=[
-                    page_container
+                    html.Div(
+                        id="page-loading-overlay",
+                        className="page-loading-overlay",
+                        children=[
+                            html.Div(className="loading-spinner"),
+                            html.Div(
+                                "Fetching market data...",
+                                id="page-loading-text",
+                                className="loading-text",
+                            ),
+                        ],
+                    ),
+                    page_container,
+                ],
+            ),
+            html.Footer(
+                className="app-footer",
+                children=[
+                    html.Span("Data sourced from Yahoo Finance", className="footer-item"),
                 ],
             ),
         ],

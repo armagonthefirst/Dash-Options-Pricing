@@ -23,7 +23,7 @@ register_page(
     __name__,
     path="/ticker-dashboard",
     name="Ticker Dashboard",
-    title="Ticker Dashboard | Options Pricing ML App",
+    title="Ticker Dashboard | Live Options Pricing Dashboard",
 )
 
 
@@ -299,10 +299,8 @@ def build_chain_table(ticker: str, chain_df: pd.DataFrame) -> html.Div:
                 html.Th("Ask"),
                 html.Th("Mid"),
                 html.Th("Volume"),
-                html.Th("Open Int."),
                 html.Th("IV"),
                 html.Th("Moneyness"),
-                html.Th(""),
             ]
         )
     )
@@ -323,17 +321,10 @@ def build_chain_table(ticker: str, chain_df: pd.DataFrame) -> html.Div:
                     html.Td(format_currency(row.ask)),
                     html.Td(format_currency(row.mid)),
                     html.Td(f"{int(row.volume):,}"),
-                    html.Td(f"{int(row.open_interest):,}"),
                     html.Td(format_pct(row.iv)),
                     html.Td(f"{row.moneyness:.3f}x"),
-                    html.Td(
-                        dcc.Link(
-                            "Analyze",
-                            href=analyze_href,
-                            className="table-button",
-                        )
-                    ),
-                ]
+                ],
+                **{"data-href": analyze_href},
             )
         )
 
@@ -430,7 +421,15 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                     html.Div(
                         className="page-header-copy",
                         children=[
-                            dcc.Link("← Back to Screener", href="/", className="back-link"),
+                            html.Div(
+                                className="breadcrumbs",
+                                id="dashboard-breadcrumbs",
+                                children=[
+                                    dcc.Link("Screener", href="/"),
+                                    html.Span(">", className="breadcrumb-sep"),
+                                    html.Span(f"{ticker} Dashboard"),
+                                ],
+                            ),
                             html.H1(
                                 f"{ticker} Dashboard",
                                 id="dashboard-page-title",
@@ -447,15 +446,10 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                         className="dashboard-header-right",
                         children=[
                             build_ticker_selector(ticker),
-                            html.Div(
-                                className="header-note-card",
-                                children=[
-                                    html.Div("Last Refresh", className="note-label"),
-                                    html.Div(last_refresh, id="dashboard-last-refresh", className="note-value"),
-                                ],
-                            ),
                         ],
                     ),
+                    # Hidden element to satisfy callback output
+                    html.Div(id="dashboard-last-refresh", style={"display": "none"}),
                 ],
             ),
             html.Div(
@@ -464,51 +458,86 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                 children=kpi_children,
             ),
             html.Div(
-                className="chart-grid chart-grid-top",
+                className="section-card chart-tabs-container",
                 children=[
-                    html.Div(
-                        className="section-card chart-card chart-card-wide",
+                    dcc.Tabs(
+                        id="dashboard-chart-tabs",
+                        value="price",
                         children=[
-                            dcc.Graph(
-                                id="price-history-chart",
-                                figure=price_figure,
-                                config={"displayModeBar": False},
-                            )
-                        ],
-                    ),
-                    html.Div(
-                        className="section-card chart-card",
-                        children=[
-                            dcc.Graph(
-                                id="volatility-regime-chart",
-                                figure=vol_figure,
-                                config={"displayModeBar": False},
-                            )
-                        ],
-                    ),
-                ],
-            ),
-            html.Div(
-                className="chart-grid chart-grid-bottom",
-                children=[
-                    html.Div(
-                        className="section-card chart-card",
-                        children=[
-                            dcc.Graph(
-                                id="term-structure-chart",
-                                figure=term_figure,
-                                config={"displayModeBar": False},
-                            )
-                        ],
-                    ),
-                    html.Div(
-                        className="section-card chart-card",
-                        children=[
-                            dcc.Graph(
-                                id="iv-smile-chart",
-                                figure=smile_figure,
-                                config={"displayModeBar": False},
-                            )
+                            dcc.Tab(
+                                label="Price & Volume",
+                                value="price",
+                                className="tab",
+                                selected_className="tab tab--selected",
+                                children=[
+                                    html.Div(
+                                        className="tab-content",
+                                        children=[
+                                            dcc.Graph(
+                                                id="price-history-chart",
+                                                figure=price_figure,
+                                                config={"displayModeBar": False},
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                            ),
+                            dcc.Tab(
+                                label="Volatility",
+                                value="volatility",
+                                className="tab",
+                                selected_className="tab tab--selected",
+                                children=[
+                                    html.Div(
+                                        className="tab-content",
+                                        children=[
+                                            dcc.Graph(
+                                                id="volatility-regime-chart",
+                                                figure=vol_figure,
+                                                config={"displayModeBar": False},
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                            ),
+                            dcc.Tab(
+                                label="IV Structure",
+                                value="iv-structure",
+                                className="tab",
+                                selected_className="tab tab--selected",
+                                children=[
+                                    html.Div(
+                                        className="tab-content",
+                                        children=[
+                                            html.Div(
+                                                className="chart-grid chart-grid-bottom",
+                                                children=[
+                                                    html.Div(
+                                                        className="chart-card",
+                                                        children=[
+                                                            dcc.Graph(
+                                                                id="term-structure-chart",
+                                                                figure=term_figure,
+                                                                config={"displayModeBar": False},
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    html.Div(
+                                                        className="chart-card",
+                                                        children=[
+                                                            dcc.Graph(
+                                                                id="iv-smile-chart",
+                                                                figure=smile_figure,
+                                                                config={"displayModeBar": False},
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                            ),
                         ],
                     ),
                 ],
@@ -521,10 +550,10 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                         children=[
                             html.Div(
                                 children=[
-                                    html.H2("Option Chain Exploration", className="section-title"),
+                                    html.H2("Option Chain", className="section-title"),
                                     html.P(
-                                        "Standard listed single-leg calls and puts. "
-                                        "Weeklies and monthlies, filtered to the selected expiry.",
+                                        "Here are the available options contracts for this stock. "
+                                        "Click any row to see its detailed pricing analysis.",
                                         className="section-description",
                                     ),
                                 ]
@@ -623,6 +652,7 @@ def sync_ticker_store(ticker_value: str) -> str:
 
 
 @callback(
+    Output("dashboard-breadcrumbs", "children"),
     Output("dashboard-page-title", "children"),
     Output("dashboard-page-description", "children"),
     Output("dashboard-last-refresh", "children"),
@@ -672,7 +702,14 @@ def update_dashboard_content(
             f"Type: {option_type.title()}"
         )
 
+        breadcrumbs = [
+            dcc.Link("Screener", href="/"),
+            html.Span(">", className="breadcrumb-sep"),
+            html.Span(f"{ticker} Dashboard"),
+        ]
+
         return (
+            breadcrumbs,
             f"{ticker} Dashboard",
             f"{kpis['name']} | Ticker-level volatility context, implied volatility structure, and option-chain exploration.",
             kpis["last_refresh"],
@@ -687,7 +724,13 @@ def update_dashboard_content(
             build_chain_table(ticker, filtered_chain),
         )
     except Exception as exc:
+        breadcrumbs = [
+            dcc.Link("Screener", href="/"),
+            html.Span(">", className="breadcrumb-sep"),
+            html.Span(f"{ticker} Dashboard"),
+        ]
         return (
+            breadcrumbs,
             f"{ticker} Dashboard",
             "Live data temporarily unavailable.",
             "Unavailable",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from functools import lru_cache
+from data.cache import ttl_cache
 from typing import Tuple
 
 import pandas as pd
@@ -71,7 +71,7 @@ def _validate_history_frame(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
     return usable.reset_index(drop=True)
 
 
-@lru_cache(maxsize=128)
+@ttl_cache(maxsize=128)
 def _fetch_price_history_cached(
     ticker: str,
     period: str = DEFAULT_HISTORY_PERIOD,
@@ -115,7 +115,7 @@ def fetch_price_history(
     ).copy()
 
 
-@lru_cache(maxsize=128)
+@ttl_cache(maxsize=128)
 def _fetch_expiries_cached(ticker: str) -> tuple[str, ...]:
     ticker = _normalize_ticker(ticker)
 
@@ -193,7 +193,7 @@ def _normalize_option_frame(
     return out.reset_index(drop=True)
 
 
-@lru_cache(maxsize=256)
+@ttl_cache(maxsize=256)
 def _fetch_option_chain_cached(ticker: str, expiry: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     ticker = _normalize_ticker(ticker)
     expiry = str(expiry)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from functools import lru_cache
+from data.cache import ttl_cache
 from math import erf, exp, log, pi, sqrt
 
 import numpy as np
@@ -134,7 +134,7 @@ def _score_contract_candidates(chain: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
-@lru_cache(maxsize=1024)
+@ttl_cache(maxsize=1024)
 def _find_live_contract_row(ticker: str, contract_id: str) -> dict:
     ticker = _validate_ticker(ticker)
     contract_id = str(contract_id)
@@ -152,7 +152,7 @@ def _find_live_contract_row(ticker: str, contract_id: str) -> dict:
     raise DataUnavailableError(f"Contract {contract_id} was not found for {ticker}.")
 
 
-@lru_cache(maxsize=256)
+@ttl_cache(maxsize=256)
 def _get_default_live_contract_row(ticker: str) -> dict:
     ticker = _validate_ticker(ticker)
     expiry = get_live_default_expiry(ticker)
@@ -246,13 +246,13 @@ def _build_snapshot_from_row(ticker: str, row: dict) -> dict:
     }
 
 
-@lru_cache(maxsize=1024)
+@ttl_cache(maxsize=1024)
 def get_live_contract_snapshot(ticker: str, contract_id: str | None = None) -> dict:
     row = _resolve_contract_row(ticker, contract_id)
     return _build_snapshot_from_row(ticker, row)
 
 
-@lru_cache(maxsize=1024)
+@ttl_cache(maxsize=1024)
 def get_live_payoff_curve(ticker: str, contract_id: str | None = None) -> pd.DataFrame:
     snapshot = get_live_contract_snapshot(ticker, contract_id)
 
@@ -278,7 +278,7 @@ def get_live_payoff_curve(ticker: str, contract_id: str | None = None) -> pd.Dat
     )
 
 
-@lru_cache(maxsize=2048)
+@ttl_cache(maxsize=2048)
 def get_live_sensitivity_curve(
     ticker: str,
     contract_id: str | None = None,

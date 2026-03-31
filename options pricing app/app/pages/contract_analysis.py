@@ -17,7 +17,7 @@ register_page(
     __name__,
     path="/contract-analysis",
     name="Contract Analysis",
-    title="Contract Analysis | Options Pricing ML App",
+    title="Contract Analysis | Live Options Pricing Dashboard",
 )
 
 
@@ -258,12 +258,21 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                     html.Div(
                         className="page-header-copy",
                         children=[
-                            dcc.Link("← Back to Dashboard", href=dashboard_href, className="back-link"),
+                            html.Div(
+                                className="breadcrumbs",
+                                children=[
+                                    dcc.Link("Screener", href="/"),
+                                    html.Span(">", className="breadcrumb-sep"),
+                                    dcc.Link(f"{ticker} Dashboard", href=dashboard_href),
+                                    html.Span(">", className="breadcrumb-sep"),
+                                    html.Span(contract_title),
+                                ],
+                            ),
                             html.H1(contract_title, className="page-title"),
                             html.P(
                                 (
                                     "Single-contract valuation view with live market quote context, "
-                                    "provisional theoretical pricing, Greeks, and sensitivity charts."
+                                    "theoretical pricing, Greeks, and sensitivity charts."
                                 ),
                                 className="page-description",
                             ),
@@ -357,62 +366,86 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
             html.Div(
                 className="greeks-grid",
                 children=[
-                    build_stat_card("Delta", f"{snapshot['delta']:.3f}"),
-                    build_stat_card("Gamma", f"{snapshot['gamma']:.4f}"),
-                    build_stat_card("Theta", f"{snapshot['theta']:.4f}", subtext="Per day"),
-                    build_stat_card("Vega", f"{snapshot['vega']:.4f}", subtext="Per 1 vol point"),
-                ],
-            ),
-            html.Div(
-                className="chart-grid chart-grid-bottom",
-                children=[
-                    html.Div(
-                        className="section-card chart-card",
-                        children=[
-                            dcc.Graph(
-                                figure=make_payoff_figure(ticker, selected_contract_id),
-                                config={"displayModeBar": False},
-                            )
-                        ],
+                    build_stat_card(
+                        "Delta",
+                        f"{snapshot['delta']:.3f}",
+                        subtext=f"Price moves ~${abs(snapshot['delta']):.2f} per $1 move in {ticker}",
                     ),
-                    html.Div(
-                        className="section-card chart-card",
-                        children=[
-                            dcc.Graph(
-                                figure=make_vol_sensitivity_figure(ticker, selected_contract_id),
-                                config={"displayModeBar": False},
-                            )
-                        ],
+                    build_stat_card(
+                        "Gamma",
+                        f"{snapshot['gamma']:.4f}",
+                        subtext=f"Delta changes by {snapshot['gamma']:.4f} per $1 move",
+                    ),
+                    build_stat_card(
+                        "Theta",
+                        f"{snapshot['theta']:.4f}",
+                        subtext=f"Loses ~${abs(snapshot['theta']):.4f} per day",
+                    ),
+                    build_stat_card(
+                        "Vega",
+                        f"{snapshot['vega']:.4f}",
+                        subtext=f"Price changes ~${abs(snapshot['vega']):.4f} per 1% vol move",
                     ),
                 ],
             ),
             html.Div(
-                className="chart-grid chart-grid-bottom",
+                className="section-card chart-tabs-container",
                 children=[
-                    html.Div(
-                        className="section-card chart-card chart-card-wide",
+                    dcc.Tabs(
+                        value="payoff",
                         children=[
-                            dcc.Graph(
-                                figure=make_spot_sensitivity_figure(ticker, selected_contract_id),
-                                config={"displayModeBar": False},
-                            )
+                            dcc.Tab(
+                                label="Payoff at Expiry",
+                                value="payoff",
+                                className="tab",
+                                selected_className="tab tab--selected",
+                                children=[
+                                    html.Div(
+                                        className="tab-content",
+                                        children=[
+                                            dcc.Graph(
+                                                figure=make_payoff_figure(ticker, selected_contract_id),
+                                                config={"displayModeBar": False},
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                            ),
+                            dcc.Tab(
+                                label="Vol Sensitivity",
+                                value="vol-sens",
+                                className="tab",
+                                selected_className="tab tab--selected",
+                                children=[
+                                    html.Div(
+                                        className="tab-content",
+                                        children=[
+                                            dcc.Graph(
+                                                figure=make_vol_sensitivity_figure(ticker, selected_contract_id),
+                                                config={"displayModeBar": False},
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                            ),
+                            dcc.Tab(
+                                label="Spot Sensitivity",
+                                value="spot-sens",
+                                className="tab",
+                                selected_className="tab tab--selected",
+                                children=[
+                                    html.Div(
+                                        className="tab-content",
+                                        children=[
+                                            dcc.Graph(
+                                                figure=make_spot_sensitivity_figure(ticker, selected_contract_id),
+                                                config={"displayModeBar": False},
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                            ),
                         ],
-                    )
-                ],
-            ),
-            html.Div(
-                className="section-card methodology-note-card",
-                children=[
-                    html.H2("Current Build Note", className="section-title"),
-                    html.P(
-                        (
-                            "This page uses live market quotes with an American-option binomial "
-                            "pricer (CRR, 200 steps) for the theoretical price and sensitivity "
-                            "curves. Black-Scholes remains as the European benchmark. Greeks are "
-                            "currently Black-Scholes-based; binomial finite-difference Greeks "
-                            "will be added in the next implementation phase."
-                        ),
-                        className="section-description",
                     ),
                 ],
             ),

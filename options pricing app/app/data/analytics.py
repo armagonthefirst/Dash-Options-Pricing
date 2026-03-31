@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from functools import lru_cache
+from data.cache import ttl_cache
 
 import numpy as np
 import pandas as pd
@@ -106,7 +106,7 @@ def _forecast_vol_from_history(history: pd.DataFrame, ticker: str) -> float:
     return float(np.clip(forecast, 0.08, 1.20))
 
 
-@lru_cache(maxsize=512)
+@ttl_cache(maxsize=512)
 def _get_live_expiry_usability_snapshot(ticker: str, expiry: str) -> dict:
     ticker = _validate_ticker(ticker)
 
@@ -191,7 +191,7 @@ def _get_live_expiry_usability_snapshot(ticker: str, expiry: str) -> dict:
     return snapshot
 
 
-@lru_cache(maxsize=128)
+@ttl_cache(maxsize=128)
 def get_live_usable_expiries(ticker: str, max_usable: int = 5) -> tuple[str, ...]:
     """
     Return usable expiries, checking at most enough to find ``max_usable``.
@@ -230,7 +230,7 @@ def get_live_usable_expiries(ticker: str, max_usable: int = 5) -> tuple[str, ...
     return tuple(usable)
 
 
-@lru_cache(maxsize=128)
+@ttl_cache(maxsize=128)
 def get_live_price_history(ticker: str) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
     raw = fetch_price_history(ticker, period="2y", interval="1d", auto_adjust=False)
@@ -238,7 +238,7 @@ def get_live_price_history(ticker: str) -> pd.DataFrame:
     return history
 
 
-@lru_cache(maxsize=128)
+@ttl_cache(maxsize=128)
 def get_live_expiries(ticker: str) -> tuple[str, ...]:
     ticker = _validate_ticker(ticker)
 
@@ -261,7 +261,7 @@ def get_live_expiries(ticker: str) -> tuple[str, ...]:
     return tuple(filtered)
 
 
-@lru_cache(maxsize=256)
+@ttl_cache(maxsize=256)
 def get_live_option_chain(ticker: str, expiry: str) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
     history = get_live_price_history(ticker)
@@ -283,14 +283,14 @@ def get_live_option_chain(ticker: str, expiry: str) -> pd.DataFrame:
     return chain
 
 
-@lru_cache(maxsize=128)
+@ttl_cache(maxsize=128)
 def get_live_default_expiry(ticker: str) -> str:
     ticker = _validate_ticker(ticker)
     expiries = list(get_live_usable_expiries(ticker))
     return choose_default_expiry(expiries, target_dte=TARGET_DTE)
 
 
-@lru_cache(maxsize=128)
+@ttl_cache(maxsize=128)
 def get_live_ticker_kpis(ticker: str) -> dict:
     ticker = _validate_ticker(ticker)
 
@@ -317,7 +317,7 @@ def get_live_ticker_kpis(ticker: str) -> dict:
     }
 
 
-@lru_cache(maxsize=32)
+@ttl_cache(maxsize=32)
 def get_live_screener_data() -> pd.DataFrame:
     rows = []
 
@@ -341,7 +341,7 @@ def get_live_screener_data() -> pd.DataFrame:
     return df
 
 
-@lru_cache(maxsize=128)
+@ttl_cache(maxsize=128)
 def get_live_iv_term_structure(ticker: str) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
 
@@ -374,7 +374,7 @@ def get_live_iv_term_structure(ticker: str) -> pd.DataFrame:
     return term
 
 
-@lru_cache(maxsize=256)
+@ttl_cache(maxsize=256)
 def get_live_iv_smile(ticker: str, expiry: str | None = None) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
 
