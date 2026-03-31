@@ -108,6 +108,14 @@ def _forecast_vol_from_history(history: pd.DataFrame, ticker: str) -> float:
 
 @ttl_cache(maxsize=512)
 def _get_live_expiry_usability_snapshot(ticker: str, expiry: str) -> dict:
+    """
+    Lightweight usability check using raw yfinance data only.
+
+    Intentionally avoids calling get_live_option_chain so that no IV solving
+    or binomial-tree computation is triggered for expiries that may be
+    discarded as unusable.  Only strike arithmetic and yfinance's own
+    impliedVolatility column are used here.
+    """
     ticker = _validate_ticker(ticker)
 
     fallback_dte = None
@@ -131,33 +139,47 @@ def _get_live_expiry_usability_snapshot(ticker: str, expiry: str) -> dict:
     }
 
     try:
-        chain = get_live_option_chain(ticker, expiry).copy()
+        history = get_live_price_history(ticker)
+        spot = float(history["Close"].iloc[-1])
+        calls_df, puts_df = fetch_option_chain(ticker, expiry)
     except Exception:
         return snapshot
 
-    if "dte" in chain.columns and not chain.empty:
-        try:
-            snapshot["dte"] = int(chain["dte"].iloc[0])
-        except Exception:
-            pass
-
-    missing_cols = [col for col in USABLE_REQUIRED_COLUMNS if col not in chain.columns]
-    if missing_cols:
+    frames = [df for df in [calls_df, puts_df] if df is not None and not df.empty]
+    if not frames:
         return snapshot
 
-    valid = chain.dropna(subset=list(USABLE_REQUIRED_COLUMNS)).copy()
-    if valid.empty:
+    raw = pd.concat(frames, ignore_index=True)
+
+    if "strike" not in raw.columns:
         return snapshot
 
-    near_atm = valid[
-        valid["moneyness"].between(
+    raw["strike"] = pd.to_numeric(raw["strike"], errors="coerce")
+    raw = raw.dropna(subset=["strike"])
+    raw = raw[raw["strike"] > 0].copy()
+
+    if raw.empty:
+        return snapshot
+
+    # Use yfinance's own impliedVolatility — no binomial solving needed here
+    if "impliedVolatility" in raw.columns:
+        raw["impliedVolatility"] = pd.to_numeric(raw["impliedVolatility"], errors="coerce")
+        raw = raw[raw["impliedVolatility"].between(0.01, 3.0)].copy()
+
+    if raw.empty:
+        return snapshot
+
+    raw["moneyness"] = raw["strike"] / spot
+
+    near_atm = raw[
+        raw["moneyness"].between(
             DEFAULT_SMILE_LOWER_MONEYNESS,
             DEFAULT_SMILE_UPPER_MONEYNESS,
             inclusive="both",
         )
-    ].copy()
+    ]
 
-    n_total = int(len(valid))
+    n_total = int(len(raw))
     n_near_atm = int(len(near_atm))
     n_unique_strikes = int(near_atm["strike"].nunique()) if not near_atm.empty else 0
     has_left = bool((near_atm["moneyness"] < 1.0).any()) if not near_atm.empty else False
@@ -345,16 +367,13 @@ def get_live_screener_data() -> pd.DataFrame:
 def get_live_iv_term_structure(ticker: str) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
 
-    history = get_live_price_history(ticker)
-    spot = float(history["Close"].iloc[-1])
-
     rows = []
-    expiries = get_live_expiries(ticker)
+    expiries = get_live_usable_expiries(ticker)
 
     for expiry in expiries:
         try:
             chain = get_live_option_chain(ticker, expiry)
-            atm_iv = get_atm_reference_iv(chain, spot=spot)
+            atm_iv = get_atm_reference_iv(chain)
             dte = int(chain["dte"].iloc[0])
 
             rows.append(
