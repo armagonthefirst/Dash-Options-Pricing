@@ -235,7 +235,7 @@ def normalize_option_chain(
     min_valid_iv: float = MIN_VALID_IV,
     max_valid_iv: float = MAX_VALID_IV,
     max_relative_spread: float | None = MAX_RELATIVE_SPREAD,
-    max_near_atm: int | None = 25,
+    max_near_atm: int | None = 10,
 ) -> pd.DataFrame:
     """
     Merge and normalize raw yfinance calls/puts into one standard chain frame.
@@ -303,6 +303,7 @@ def normalize_option_chain(
         out = out.nsmallest(max_near_atm, "_atm_distance").copy()
         out = out.drop(columns=["_atm_distance"])
 
+
     # When bid and ask are both zero or missing (common outside market hours),
     # fall back to lastPrice so that off-hours data is still usable.
     bid_zero_or_nan = out["bid"].fillna(0.0) <= 0.0
@@ -336,6 +337,8 @@ def normalize_option_chain(
                 risk_free_rate=IV_SOLVE_RISK_FREE_RATE,
                 dividend_yield=IV_SOLVE_DIVIDEND_YIELD,
                 option_type=option_type,
+                steps=10,
+                max_iter=20,
             )
             solved_ivs.append(solved)
 
