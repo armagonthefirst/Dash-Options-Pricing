@@ -434,22 +434,10 @@ def get_live_price_chart_frame(ticker: str, display_window: int = 252) -> pd.Dat
 def get_live_volatility_chart_frame(
     ticker: str,
     display_window: int = 252,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
-
-    full_history = get_live_price_history(ticker)
-    history = full_history.copy().tail(display_window).reset_index(drop=True)
-    forecast = _forecast_vol_from_history(full_history, ticker)
-
-    forecast_dates = pd.bdate_range(start=history["Date"].iloc[-1], periods=21)[1:]
-    forecast_frame = pd.DataFrame(
-        {
-            "Date": forecast_dates,
-            "forecast_vol": forecast,
-        }
-    )
-
-    return history, forecast_frame
+    history = get_live_price_history(ticker).copy()
+    return history.tail(display_window).reset_index(drop=True)
 
 
 def get_live_filtered_option_chain(

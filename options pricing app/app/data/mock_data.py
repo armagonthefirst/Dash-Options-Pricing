@@ -451,17 +451,7 @@ def get_price_chart_frame(ticker: str, display_window: int = 252) -> pd.DataFram
 
 def get_volatility_chart_frame(ticker: str, display_window: int = 252) -> pd.DataFrame:
     history = get_price_history(ticker).copy().tail(display_window).reset_index(drop=True)
-    forecast = get_forecast_volatility(ticker)
-
-    forecast_dates = pd.bdate_range(start=history["Date"].iloc[-1], periods=21)[1:]
-    forecast_frame = pd.DataFrame(
-        {
-            "Date": forecast_dates,
-            "forecast_vol": forecast,
-        }
-    )
-
-    return history, forecast_frame
+    return history
 
 
 def get_expiry_choices(ticker: str) -> list[dict[str, str]]:

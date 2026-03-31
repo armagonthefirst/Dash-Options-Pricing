@@ -312,6 +312,7 @@ def get_live_sensitivity_curve(
                 volatility=float(vol),
                 dividend_yield=DIVIDEND_YIELD,
                 option_type=option_type,
+                steps=50,
             )
             for vol in grid
         ]
@@ -327,6 +328,7 @@ def get_live_sensitivity_curve(
             volatility=forecast_vol,
             dividend_yield=DIVIDEND_YIELD,
             option_type=option_type,
+            steps=50,
         )
         for s in grid
     ]

@@ -160,7 +160,7 @@ def make_price_figure(ticker: str) -> go.Figure:
 
 
 def make_volatility_figure(ticker: str) -> go.Figure:
-    history_df, _forecast_df = get_volatility_chart_frame(ticker, display_window=252)
+    history_df = get_volatility_chart_frame(ticker, display_window=252)
 
     fig = go.Figure()
 
