@@ -233,7 +233,7 @@ def get_live_usable_expiries(ticker: str, max_usable: int = 5) -> tuple[str, ...
 @ttl_cache(maxsize=128)
 def get_live_price_history(ticker: str) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
-    raw = fetch_price_history(ticker, period="2y", interval="1d", auto_adjust=False)
+    raw = fetch_price_history(ticker, period="1y", interval="1d", auto_adjust=False)
     history = normalize_price_history(raw, min_rows=20)
     return history
 
