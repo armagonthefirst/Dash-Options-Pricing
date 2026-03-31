@@ -160,7 +160,7 @@ def make_price_figure(ticker: str) -> go.Figure:
 
 
 def make_volatility_figure(ticker: str) -> go.Figure:
-    history_df, forecast_df = get_volatility_chart_frame(ticker, display_window=252)
+    history_df, _forecast_df = get_volatility_chart_frame(ticker, display_window=252)
 
     fig = go.Figure()
 
@@ -181,16 +181,6 @@ def make_volatility_figure(ticker: str) -> go.Figure:
             mode="lines",
             name="60D Realized Vol",
             line=dict(width=2, dash="dot"),
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=forecast_df["Date"],
-            y=forecast_df["forecast_vol"],
-            mode="lines+markers",
-            name="20D Forecast Vol",
-            line=dict(width=2.2, dash="dash"),
         )
     )
 
@@ -662,7 +652,75 @@ def sync_ticker_store(ticker_value: str) -> str:
     Output("price-history-chart", "figure"),
     Output("volatility-regime-chart", "figure"),
     Output("term-structure-chart", "figure"),
+    Input("dashboard-ticker-store", "data"),
+)
+def update_ticker_content(ticker: str):
+    """Fires only when the ticker changes — rebuilds KPIs and charts."""
+    ticker = get_valid_ticker(ticker)
+
+    breadcrumbs = [
+        dcc.Link("Screener", href="/"),
+        html.Span(">", className="breadcrumb-sep"),
+        html.Span(f"{ticker} Dashboard"),
+    ]
+
+    try:
+        kpis = get_ticker_kpis(ticker)
+        expiry_options = get_expiry_choices(ticker)
+        default_expiry = get_default_expiry(ticker)
+
+        return (
+            breadcrumbs,
+            f"{ticker} Dashboard",
+            f"{kpis['name']} | Ticker-level volatility context, implied volatility structure, and option-chain exploration.",
+            kpis["last_refresh"],
+            build_kpi_grid(kpis),
+            expiry_options,
+            default_expiry,
+            make_price_figure(ticker),
+            make_volatility_figure(ticker),
+            make_term_structure_figure(ticker),
+        )
+    except Exception as exc:
+        return (
+            breadcrumbs,
+            f"{ticker} Dashboard",
+            "Live data temporarily unavailable.",
+            "Unavailable",
+            [
+                build_kpi_card(
+                    "Live Data Status",
+                    "Unavailable",
+                    subtext="Previous data may be stale. Try refreshing.",
+                    accent_class="negative",
+                )
+            ],
+            no_update,
+            no_update,
+            make_empty_figure("Price History"),
+            make_empty_figure("Rolling Volatility Regime"),
+            make_empty_figure("ATM IV Term Structure"),
+        )
+
+
+@callback(
     Output("iv-smile-chart", "figure"),
+    Input("dashboard-ticker-store", "data"),
+    Input("dashboard-expiry-dropdown", "value"),
+)
+def update_smile_chart(ticker: str, selected_expiry: str | None):
+    """Fires when ticker or expiry changes — rebuilds IV smile only."""
+    ticker = get_valid_ticker(ticker)
+
+    try:
+        if not selected_expiry:
+            selected_expiry = get_default_expiry(ticker)
+        return make_smile_figure(ticker, selected_expiry)
+    except Exception:
+        return make_empty_figure("IV Smile / Skew")
+
+
+@callback(
     Output("chain-summary-text", "children"),
     Output("option-chain-container", "children"),
     Input("dashboard-ticker-store", "data"),
@@ -671,21 +729,18 @@ def sync_ticker_store(ticker_value: str) -> str:
     Input("dashboard-moneyness-dropdown", "value"),
     Input("dashboard-sort-dropdown", "value"),
 )
-def update_dashboard_content(
+def update_chain_table(
     ticker: str,
     selected_expiry: str | None,
     option_type: str,
     moneyness_bucket: str,
     sort_by: str,
 ):
+    """Fires on any filter change — rebuilds option chain table only."""
     ticker = get_valid_ticker(ticker)
 
     try:
-        kpis = get_ticker_kpis(ticker)
-        expiry_options = get_expiry_choices(ticker)
-
-        available_expiries = {item["value"] for item in expiry_options}
-        if not selected_expiry or selected_expiry not in available_expiries:
+        if not selected_expiry:
             selected_expiry = get_default_expiry(ticker)
 
         filtered_chain = get_filtered_option_chain(
@@ -702,52 +757,9 @@ def update_dashboard_content(
             f"Type: {option_type.title()}"
         )
 
-        breadcrumbs = [
-            dcc.Link("Screener", href="/"),
-            html.Span(">", className="breadcrumb-sep"),
-            html.Span(f"{ticker} Dashboard"),
-        ]
-
-        return (
-            breadcrumbs,
-            f"{ticker} Dashboard",
-            f"{kpis['name']} | Ticker-level volatility context, implied volatility structure, and option-chain exploration.",
-            kpis["last_refresh"],
-            build_kpi_grid(kpis),
-            expiry_options,
-            selected_expiry,
-            make_price_figure(ticker),
-            make_volatility_figure(ticker),
-            make_term_structure_figure(ticker),
-            make_smile_figure(ticker, selected_expiry),
-            summary_text,
-            build_chain_table(ticker, filtered_chain),
-        )
+        return summary_text, build_chain_table(ticker, filtered_chain)
     except Exception as exc:
-        breadcrumbs = [
-            dcc.Link("Screener", href="/"),
-            html.Span(">", className="breadcrumb-sep"),
-            html.Span(f"{ticker} Dashboard"),
-        ]
         return (
-            breadcrumbs,
-            f"{ticker} Dashboard",
-            "Live data temporarily unavailable.",
-            "Unavailable",
-            [
-                build_kpi_card(
-                    "Live Data Status",
-                    "Unavailable",
-                    subtext="Previous data may be stale. Try refreshing.",
-                    accent_class="negative",
-                )
-            ],
-            no_update,
-            no_update,
-            no_update,
-            no_update,
-            no_update,
-            no_update,
             f"Live data temporarily unavailable: {exc}",
             build_dashboard_error_state(str(exc)),
         )
