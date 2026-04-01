@@ -289,8 +289,10 @@ def build_chain_table(ticker: str, chain_df: pd.DataFrame) -> html.Div:
                 html.Th("Ask"),
                 html.Th("Mid"),
                 html.Th("Volume"),
+                html.Th("OI"),
                 html.Th("IV"),
                 html.Th("Moneyness"),
+                html.Th(""),
             ]
         )
     )
@@ -311,8 +313,10 @@ def build_chain_table(ticker: str, chain_df: pd.DataFrame) -> html.Div:
                     html.Td(format_currency(row.ask)),
                     html.Td(format_currency(row.mid)),
                     html.Td(f"{int(row.volume):,}"),
+                    html.Td(f"{int(row.open_interest):,}"),
                     html.Td(format_pct(row.iv)),
                     html.Td(f"{row.moneyness:.3f}x"),
+                    html.Td("Analyse ↗", className="chain-row-cta"),
                 ],
                 **{"data-href": analyze_href},
             )

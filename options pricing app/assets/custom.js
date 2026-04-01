@@ -142,9 +142,15 @@
     }
   }
 
-  // Update immediately and then every 60 seconds
-  document.addEventListener("DOMContentLoaded", function () {
-    updateBadge();
-    setInterval(updateBadge, 60000);
-  });
+  // Poll until the badge element exists (Dash renders via React after DOMContentLoaded),
+  // then update immediately and every 60 seconds.
+  function waitForBadge() {
+    if (document.getElementById("market-status-badge")) {
+      updateBadge();
+      setInterval(updateBadge, 60000);
+    } else {
+      setTimeout(waitForBadge, 100);
+    }
+  }
+  waitForBadge();
 })();

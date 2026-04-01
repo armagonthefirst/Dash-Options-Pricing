@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from urllib.parse import quote, unquote
+from urllib.parse import unquote
 
 import plotly.graph_objects as go
 from dash import dcc, html, register_page
@@ -236,12 +236,15 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
     snapshot = safe_snapshot(ticker, decoded_contract_id)
     selected_contract_id = snapshot["contract_id"]
     dashboard_href = f"/ticker-dashboard?ticker={ticker}"
-    reload_href = (
-        f"/contract-analysis?ticker={ticker}&contract_id="
-        f"{quote(selected_contract_id, safe='')}"
-    )
 
     gap_class = "positive" if snapshot["pricing_gap"] >= 0 else "negative"
+    gap_interpretation = (
+        "Model sees this as underpriced by market"
+        if snapshot["pricing_gap"] > 0
+        else "Model sees this as overpriced by market"
+        if snapshot["pricing_gap"] < 0
+        else "Model: fairly priced"
+    )
 
     contract_title = (
         f"{snapshot['ticker']} {snapshot['type']} | "
@@ -288,11 +291,6 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                                     html.Div(selected_contract_id, className="note-value"),
                                 ],
                             ),
-                            dcc.Link(
-                                "Reload Contract View",
-                                href=reload_href,
-                                className="card-button",
-                            ),
                         ],
                     ),
                 ],
@@ -313,7 +311,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                     build_stat_card(
                         "Pricing Gap",
                         format_signed_currency(snapshot["pricing_gap"]),
-                        subtext=f"{format_signed_pct(snapshot['pricing_gap_pct'])} vs market mid",
+                        subtext=f"{format_signed_pct(snapshot['pricing_gap_pct'])} vs market mid · {gap_interpretation}",
                         accent_class=gap_class,
                     ),
                     build_stat_card("Implied Volatility", format_pct(snapshot["iv"])),

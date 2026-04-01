@@ -7,7 +7,7 @@ from dash import Dash
 from layout import create_layout
 from data.analytics import clear_analytics_cache, get_live_ticker_kpis, TICKER_ORDER
 from data.contract_analytics import clear_contract_analytics_cache
-from data.market_data import clear_market_data_cache
+from data.market_data import clear_market_data_cache, fetch_dividend_yield
 
 # Resolve project paths
 APP_DIR = Path(__file__).resolve().parent
@@ -45,6 +45,10 @@ def _prewarm_cache() -> None:
     for ticker in TICKER_ORDER:
         try:
             get_live_ticker_kpis(ticker)
+        except Exception:
+            pass
+        try:
+            fetch_dividend_yield(ticker)
         except Exception:
             pass
         sleep(3)  # breathe between tickers to avoid CPU spike

@@ -14,7 +14,7 @@ from data.analytics import (
     get_live_ticker_kpis,
     get_live_usable_expiries,
 )
-from data.market_data import DataUnavailableError
+from data.market_data import DataUnavailableError, fetch_dividend_yield
 from data.pricing import price_american_option_binomial
 
 
@@ -200,12 +200,15 @@ def _build_snapshot_from_row(ticker: str, row: dict) -> dict:
     forecast_vol = float(kpis["forecast_vol_20d"])
     market_mid = float(row["mid"])
 
+    dividend_yield = fetch_dividend_yield(ticker)
+
     benchmark_metrics = _black_scholes_metrics(
         spot=spot,
         strike=strike,
         time_to_expiry=time_to_expiry,
         volatility=contract_iv,
         option_type=option_type,
+        dividend_yield=dividend_yield,
     )
     theoretical_price = price_american_option_binomial(
         spot=spot,
@@ -213,7 +216,7 @@ def _build_snapshot_from_row(ticker: str, row: dict) -> dict:
         time_to_expiry=time_to_expiry,
         risk_free_rate=RISK_FREE_RATE,
         volatility=forecast_vol,
-        dividend_yield=DIVIDEND_YIELD,
+        dividend_yield=dividend_yield,
         option_type=option_type,
     )
 
@@ -296,6 +299,7 @@ def get_live_sensitivity_curve(
     forecast_vol = float(snapshot["forecast_vol"])
     current_iv = float(snapshot["iv"])
     time_to_expiry = max(float(snapshot["dte"]) / 365.0, MIN_TIME_TO_EXPIRY)
+    dividend_yield = fetch_dividend_yield(ticker)
 
     if sensitivity_type == "vol":
         base_low = min(current_iv, forecast_vol)
@@ -310,7 +314,7 @@ def get_live_sensitivity_curve(
                 time_to_expiry=time_to_expiry,
                 risk_free_rate=RISK_FREE_RATE,
                 volatility=float(vol),
-                dividend_yield=DIVIDEND_YIELD,
+                dividend_yield=dividend_yield,
                 option_type=option_type,
                 steps=50,
             )
@@ -326,7 +330,7 @@ def get_live_sensitivity_curve(
             time_to_expiry=time_to_expiry,
             risk_free_rate=RISK_FREE_RATE,
             volatility=forecast_vol,
-            dividend_yield=DIVIDEND_YIELD,
+            dividend_yield=dividend_yield,
             option_type=option_type,
             steps=50,
         )

@@ -644,6 +644,19 @@ a {
   background: rgba(78, 161, 255, 0.05);
 }
 
+.chain-row-cta {
+  color: var(--text-muted) !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  transition: color 0.18s ease !important;
+}
+
+.chain-table tbody tr:hover .chain-row-cta {
+  color: var(--accent-2) !important;
+}
+
 .empty-state {
   padding: 24px;
   border-radius: var(--radius-lg);
@@ -786,6 +799,19 @@ a {
 
 .ticker-card {
   cursor: pointer;
+}
+
+.ticker-card-cta {
+  margin-top: 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  transition: color 0.18s ease;
+}
+
+.ticker-card:hover .ticker-card-cta {
+  color: var(--accent-2);
 }
 
 /* =========================================================================

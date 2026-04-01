@@ -86,6 +86,7 @@ def build_ticker_card(row: dict, index: int) -> html.Div:
                         ),
                     ],
                 ),
+                html.Div("Analyse ↗", className="ticker-card-cta"),
             ],
         ),
     )

@@ -251,6 +251,21 @@ def fetch_latest_spot(ticker: str) -> float:
     return float(close_series.iloc[-1])
 
 
+@ttl_cache(maxsize=64)
+def _fetch_dividend_yield_cached(ticker: str) -> float:
+    ticker = _normalize_ticker(ticker)
+    try:
+        info = yf.Ticker(ticker).info or {}
+        return float(info.get("dividendYield") or 0.0)
+    except Exception:
+        return 0.0
+
+
+def fetch_dividend_yield(ticker: str) -> float:
+    """Return the annualised dividend yield for a ticker (e.g. 0.013 for 1.3%)."""
+    return _fetch_dividend_yield_cached(ticker)
+
+
 def clear_market_data_cache() -> None:
     """
     Handy during development if you want to force-refresh yfinance pulls
@@ -259,3 +274,4 @@ def clear_market_data_cache() -> None:
     _fetch_price_history_cached.cache_clear()
     _fetch_expiries_cached.cache_clear()
     _fetch_option_chain_cached.cache_clear()
+    _fetch_dividend_yield_cached.cache_clear()
