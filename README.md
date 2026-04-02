@@ -2,7 +2,7 @@
 
 A full-stack options pricing web application that prices American-style options
 using a Cox-Ross-Rubinstein (CRR) binomial tree and compares theoretical fair
-value against live market prices. Built with Python, Dash, and deployed on Render.
+value against live market prices. Built with Python, Dash, and deployed on Microsoft Azure.
 
 **Live demo:** [options.shariqusoof.com](https://options.shariqusoof.com)
 
@@ -76,34 +76,6 @@ the market price cheap or expensive relative to the forecast volatility.
 
 ---
 
-## Project Structure
-
-```
-options pricing app/
-├── app/
-│   ├── main.py                   # App entry point, cache pre-warming, refresh loop
-│   ├── layout.py                 # App shell, navigation, market status badge
-│   ├── pages/
-│   │   ├── screener.py           # Overview / screener page
-│   │   ├── ticker_dashboard.py   # Ticker dashboard with charts and options chain
-│   │   ├── contract_analysis.py  # Single-contract pricing and Greeks
-│   │   └── methodology.py        # Methodology page
-│   └── data/
-│       ├── pricing.py            # CRR binomial tree + IV bisection solver
-│       ├── analytics.py          # Ticker KPIs, vol forecasting, term structure
-│       ├── contract_analytics.py # Greeks, sensitivity curves, snapshot builder
-│       ├── data_processing.py    # Option chain normalisation and filtering
-│       ├── market_data.py        # yfinance data fetching layer (cached)
-│       ├── cache.py              # Custom TTL cache decorator
-│       ├── data_source.py        # Live vs mock data routing
-│       └── mock_data.py          # Synthetic data for offline development
-└── assets/
-    ├── styles.css                # All UI styling (dark theme, responsive)
-    └── custom.js                 # Loading overlay, market status, accordion, clickable rows
-```
-
----
-
 ## Running Locally
 
 ### Prerequisites
@@ -115,7 +87,7 @@ options pricing app/
 
 ```bash
 git clone https://github.com/armagonthefirst/Options-Pricing.git
-cd "Options-Pricing/options pricing app"
+cd "Dash-Options-Pricing/options pricing app"
 
 pip install -r requirements.txt
 
@@ -162,22 +134,7 @@ The app was optimised to run on a constrained cloud instance (0.5 CPU, 512MB RAM
 
 ## Deployment
 
-The app is deployed on Render's Starter plan with Gunicorn:
-
-```
-gunicorn --chdir app main:server --timeout 120
-```
-
-DNS is managed via Cloudflare with a CNAME record pointing
-`options.shariqusoof.com` to the Render service URL.
+The app is deployed on a Microsoft Azure Virtual Machine with configured access controls and basic network settings for secure live hosting.
+The app server is run using Gunicorn.
 
 ---
-
-## Limitations
-
-- Volatility forecast is a simple weighted realised volatility blend — it does not
-  account for upcoming events (earnings, FOMC) or mean reversion dynamics
-- Dividend yields are fetched from Yahoo Finance and may not reflect the exact
-  ex-dividend schedule
-- Data is sourced from Yahoo Finance, which can be unreliable outside US market hours
-- This is an analytical tool, not a trading system
