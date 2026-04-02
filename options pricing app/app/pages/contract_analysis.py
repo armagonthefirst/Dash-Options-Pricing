@@ -326,7 +326,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                         children=[
                             dcc.Graph(
                                 figure=make_price_comparison_figure(snapshot),
-                                config={"displayModeBar": False},
+                                config={"displayModeBar": False, "responsive": True},
                             )
                         ],
                     ),
@@ -403,7 +403,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                                         children=[
                                             dcc.Graph(
                                                 figure=make_payoff_figure(ticker, selected_contract_id),
-                                                config={"displayModeBar": False},
+                                                config={"displayModeBar": False, "responsive": True},
                                             ),
                                         ],
                                     ),
@@ -420,7 +420,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                                         children=[
                                             dcc.Graph(
                                                 figure=make_vol_sensitivity_figure(ticker, selected_contract_id),
-                                                config={"displayModeBar": False},
+                                                config={"displayModeBar": False, "responsive": True},
                                             ),
                                         ],
                                     ),
@@ -437,7 +437,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                                         children=[
                                             dcc.Graph(
                                                 figure=make_spot_sensitivity_figure(ticker, selected_contract_id),
-                                                config={"displayModeBar": False},
+                                                config={"displayModeBar": False, "responsive": True},
                                             ),
                                         ],
                                     ),

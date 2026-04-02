@@ -470,7 +470,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                                             dcc.Graph(
                                                 id="price-history-chart",
                                                 figure=price_figure,
-                                                config={"displayModeBar": False},
+                                                config={"displayModeBar": False, "responsive": True},
                                             ),
                                         ],
                                     ),
@@ -488,7 +488,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                                             dcc.Graph(
                                                 id="volatility-regime-chart",
                                                 figure=vol_figure,
-                                                config={"displayModeBar": False},
+                                                config={"displayModeBar": False, "responsive": True},
                                             ),
                                         ],
                                     ),
@@ -512,7 +512,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                                                             dcc.Graph(
                                                                 id="term-structure-chart",
                                                                 figure=term_figure,
-                                                                config={"displayModeBar": False},
+                                                                config={"displayModeBar": False, "responsive": True},
                                                             ),
                                                         ],
                                                     ),
@@ -522,7 +522,7 @@ def layout(ticker: str | None = None, **kwargs) -> html.Div:
                                                             dcc.Graph(
                                                                 id="iv-smile-chart",
                                                                 figure=smile_figure,
-                                                                config={"displayModeBar": False},
+                                                                config={"displayModeBar": False, "responsive": True},
                                                             ),
                                                         ],
                                                     ),

@@ -1198,4 +1198,62 @@ a {
   .table-button {
     width: 100%;
   }
+
+  /* Always show ticker card metrics on mobile — hover doesn't exist on touch */
+  .ticker-card-metrics {
+    max-height: 300px !important;
+    opacity: 1 !important;
+    margin-top: 18px !important;
+  }
+
+  /* Ensure nav links don't overflow on small screens */
+  .app-nav {
+    gap: 8px;
+  }
+
+  .nav-link {
+    font-size: 0.88rem;
+    padding: 0 12px;
+  }
+
+  /* Tighten up section card padding */
+  .section-card {
+    padding: 16px;
+  }
+
+  /* Market status badge — smaller on mobile */
+  .market-status-badge {
+    font-size: 0.78rem;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Very small phones — tighten spacing further */
+  .app-header,
+  .app-nav,
+  .app-main {
+    width: min(var(--content-width), calc(100% - 16px));
+  }
+
+  .kpi-value {
+    font-size: 1.1rem;
+  }
+
+  .ticker-symbol {
+    font-size: 1.1rem;
+  }
+
+  .page-title {
+    font-size: 1.3rem;
+  }
+
+  .app-title {
+    font-size: 1.4rem;
+  }
+
+  /* Stack header fully */
+  .header-right {
+    width: 100%;
+  }
 }
