@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from urllib.parse import unquote
 
+import numpy as np
 import plotly.graph_objects as go
 from dash import dcc, html, register_page
 
@@ -10,6 +11,26 @@ from data.data_source import (
     get_payoff_curve,
     get_sensitivity_curve,
     get_supported_tickers,
+)
+
+
+_CHART_THEME = dict(
+    paper_bgcolor="#0d1624",
+    plot_bgcolor="#0d1624",
+    font=dict(family="Roboto, sans-serif", color="#9fb0c8", size=12),
+    title_font=dict(family="Roboto, sans-serif", size=13, color="#c7d6ea"),
+    xaxis=dict(
+        gridcolor="rgba(148, 163, 184, 0.08)",
+        linecolor="rgba(148, 163, 184, 0.15)",
+        tickfont=dict(size=11),
+        zerolinecolor="rgba(148, 163, 184, 0.12)",
+    ),
+    yaxis=dict(
+        gridcolor="rgba(148, 163, 184, 0.08)",
+        linecolor="rgba(148, 163, 184, 0.15)",
+        tickfont=dict(size=11),
+        zerolinecolor="rgba(148, 163, 184, 0.12)",
+    ),
 )
 
 
@@ -80,7 +101,7 @@ def build_detail_row(label: str, value: str) -> html.Div:
 def make_empty_figure(title: str, message: str) -> go.Figure:
     fig = go.Figure()
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title=title,
         margin=dict(l=30, r=20, t=55, b=30),
         height=340,
@@ -92,12 +113,13 @@ def make_empty_figure(title: str, message: str) -> go.Figure:
                 xref="paper",
                 yref="paper",
                 showarrow=False,
+                font=dict(color="#7d90ac"),
             )
         ],
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
         showlegend=False,
     )
+    fig.update_xaxes(visible=False)
+    fig.update_yaxes(visible=False)
     return fig
 
 
@@ -108,6 +130,7 @@ def make_price_comparison_figure(snapshot: dict) -> go.Figure:
         snapshot["theoretical_price"],
         snapshot["benchmark_price"],
     ]
+    colors = ["#9fb0c8", "#4ea1ff", "#63d2ff"]
 
     fig = go.Figure(
         data=[
@@ -116,46 +139,76 @@ def make_price_comparison_figure(snapshot: dict) -> go.Figure:
                 y=values,
                 text=[format_currency(v) for v in values],
                 textposition="outside",
+                textfont=dict(size=12, color="#c7d6ea"),
+                marker_color=colors,
+                marker_line_width=0,
                 name="Price Comparison",
             )
         ]
     )
 
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title="Contract Value Comparison",
-        xaxis_title="Price Type",
-        yaxis_title="Option Value",
-        margin=dict(l=30, r=20, t=55, b=30),
+        xaxis_title="",
+        yaxis_title="Option Value (USD)",
+        margin=dict(l=30, r=20, t=55, b=40),
         height=340,
         showlegend=False,
     )
+    fig.update_yaxes(range=[0, max(values) * 1.25])
     return fig
 
 
-def make_payoff_figure(ticker: str, contract_id: str | None) -> go.Figure:
+def make_payoff_figure(ticker: str, contract_id: str | None, current_spot: float | None = None) -> go.Figure:
     try:
         df = get_payoff_curve(ticker, contract_id).copy()
     except Exception as exc:
         return make_empty_figure("Payoff at Expiry", f"Unavailable: {exc}")
 
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=df["underlying_price"],
-            y=df["pnl_at_expiry"],
-            mode="lines",
-            name="PnL at Expiry",
-            line=dict(width=2.5),
-        )
-    )
+    pnl = df["pnl_at_expiry"].values
+    x = df["underlying_price"].values
 
-    fig.add_hline(y=0, line_width=1, line_dash="dash")
+    profit_y = np.where(pnl >= 0, pnl, 0.0)
+    loss_y = np.where(pnl < 0, pnl, 0.0)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=x, y=profit_y,
+        fill="tozeroy", fillcolor="rgba(53, 196, 139, 0.12)",
+        line=dict(width=0), showlegend=False, hoverinfo="skip",
+    ))
+    fig.add_trace(go.Scatter(
+        x=x, y=loss_y,
+        fill="tozeroy", fillcolor="rgba(255, 107, 129, 0.12)",
+        line=dict(width=0), showlegend=False, hoverinfo="skip",
+    ))
+    fig.add_trace(go.Scatter(
+        x=x, y=pnl,
+        mode="lines",
+        name="PnL at Expiry",
+        line=dict(width=2.5, color="#4ea1ff"),
+        hovertemplate="Spot: $%{x:,.2f}<br>PnL: $%{y:,.2f}<extra></extra>",
+    ))
+
+    fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="rgba(148, 163, 184, 0.3)")
+
+    if current_spot is not None:
+        fig.add_vline(
+            x=current_spot,
+            line_dash="dash",
+            line_color="rgba(246, 193, 119, 0.6)",
+            line_width=1.5,
+            annotation_text="Spot",
+            annotation_position="top",
+            annotation_font=dict(size=10, color="#f6c177"),
+        )
+
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title="Payoff at Expiry",
-        xaxis_title="Underlying Price at Expiry",
-        yaxis_title="PnL",
+        xaxis_title="Underlying Price at Expiry (USD)",
+        yaxis_title="PnL (USD)",
         margin=dict(l=30, r=20, t=55, b=30),
         height=340,
         showlegend=False,
@@ -163,7 +216,7 @@ def make_payoff_figure(ticker: str, contract_id: str | None) -> go.Figure:
     return fig
 
 
-def make_vol_sensitivity_figure(ticker: str, contract_id: str | None) -> go.Figure:
+def make_vol_sensitivity_figure(ticker: str, contract_id: str | None, current_iv: float | None = None) -> go.Figure:
     try:
         df = get_sensitivity_curve(ticker, contract_id, sensitivity_type="vol").copy()
     except Exception as exc:
@@ -176,15 +229,27 @@ def make_vol_sensitivity_figure(ticker: str, contract_id: str | None) -> go.Figu
             y=df["option_value"],
             mode="lines",
             name="Vol Sensitivity",
-            line=dict(width=2.5),
+            line=dict(width=2.5, color="#4ea1ff"),
+            hovertemplate="Vol: %{x:.1%}<br>Value: $%{y:,.2f}<extra></extra>",
         )
     )
 
+    if current_iv is not None:
+        fig.add_vline(
+            x=current_iv,
+            line_dash="dash",
+            line_color="rgba(246, 193, 119, 0.7)",
+            line_width=1.5,
+            annotation_text="Market IV",
+            annotation_position="top",
+            annotation_font=dict(size=10, color="#f6c177"),
+        )
+
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title="Option Value vs Volatility",
         xaxis_title="Implied Volatility",
-        yaxis_title="Option Value",
+        yaxis_title="Option Value (USD)",
         margin=dict(l=30, r=20, t=55, b=30),
         height=340,
         showlegend=False,
@@ -193,7 +258,7 @@ def make_vol_sensitivity_figure(ticker: str, contract_id: str | None) -> go.Figu
     return fig
 
 
-def make_spot_sensitivity_figure(ticker: str, contract_id: str | None) -> go.Figure:
+def make_spot_sensitivity_figure(ticker: str, contract_id: str | None, current_spot: float | None = None) -> go.Figure:
     try:
         df = get_sensitivity_curve(ticker, contract_id, sensitivity_type="spot").copy()
     except Exception as exc:
@@ -206,15 +271,27 @@ def make_spot_sensitivity_figure(ticker: str, contract_id: str | None) -> go.Fig
             y=df["option_value"],
             mode="lines",
             name="Spot Sensitivity",
-            line=dict(width=2.5),
+            line=dict(width=2.5, color="#63d2ff"),
+            hovertemplate="Spot: $%{x:,.2f}<br>Value: $%{y:,.2f}<extra></extra>",
         )
     )
 
+    if current_spot is not None:
+        fig.add_vline(
+            x=current_spot,
+            line_dash="dash",
+            line_color="rgba(246, 193, 119, 0.7)",
+            line_width=1.5,
+            annotation_text="Current Spot",
+            annotation_position="top",
+            annotation_font=dict(size=10, color="#f6c177"),
+        )
+
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title="Option Value vs Underlying Price",
-        xaxis_title="Underlying Price",
-        yaxis_title="Option Value",
+        xaxis_title="Underlying Price (USD)",
+        yaxis_title="Option Value (USD)",
         margin=dict(l=30, r=20, t=55, b=30),
         height=340,
         showlegend=False,
@@ -327,7 +404,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                             dcc.Graph(
                                 figure=make_price_comparison_figure(snapshot),
                                 config={"displayModeBar": False, "responsive": True},
-                            )
+                            ),
                         ],
                     ),
                     html.Div(
@@ -402,7 +479,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                                         className="tab-content",
                                         children=[
                                             dcc.Graph(
-                                                figure=make_payoff_figure(ticker, selected_contract_id),
+                                                figure=make_payoff_figure(ticker, selected_contract_id, current_spot=snapshot["spot"]),
                                                 config={"displayModeBar": False, "responsive": True},
                                             ),
                                         ],
@@ -419,7 +496,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                                         className="tab-content",
                                         children=[
                                             dcc.Graph(
-                                                figure=make_vol_sensitivity_figure(ticker, selected_contract_id),
+                                                figure=make_vol_sensitivity_figure(ticker, selected_contract_id, current_iv=snapshot["iv"]),
                                                 config={"displayModeBar": False, "responsive": True},
                                             ),
                                         ],
@@ -436,7 +513,7 @@ def layout(ticker: str | None = None, contract_id: str | None = None, **kwargs) 
                                         className="tab-content",
                                         children=[
                                             dcc.Graph(
-                                                figure=make_spot_sensitivity_figure(ticker, selected_contract_id),
+                                                figure=make_spot_sensitivity_figure(ticker, selected_contract_id, current_spot=snapshot["spot"]),
                                                 config={"displayModeBar": False, "responsive": True},
                                             ),
                                         ],

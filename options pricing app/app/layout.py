@@ -1,7 +1,7 @@
 from dash import dcc, html, page_container, page_registry
 
 
-APP_TITLE = "Live Options Pricing Dashboard"
+APP_TITLE = "Options Pricing Dashboard"
 
 
 def build_nav_links():
@@ -29,6 +29,14 @@ def build_nav_links():
             className="nav-link",
         )
         for page in pages
+    ] + [
+        html.A(
+            "About Me",
+            href="https://www.shariqusoof.com",
+            target="_blank",
+            rel="noopener noreferrer",
+            className="nav-link",
+        )
     ]
 
 
@@ -51,6 +59,7 @@ def create_layout():
     return html.Div(
         className="app-shell",
         children=[
+            html.Div(className="aurora-bg"),
             html.Header(
                 className="app-header",
                 children=[

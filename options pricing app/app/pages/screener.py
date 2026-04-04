@@ -43,11 +43,13 @@ def build_ticker_card(row: dict, index: int) -> html.Div:
         else "metric-value negative"
     )
 
+    spread_accent = "iv-positive" if row["iv_forecast_spread"] >= 0 else "iv-negative"
+
     return dcc.Link(
         href=f"/ticker-dashboard?ticker={row['ticker']}",
         style={"textDecoration": "none", "color": "inherit"},
         children=html.Div(
-            className="ticker-card fade-in-card",
+            className=f"ticker-card fade-in-card {spread_accent}",
             style={"--card-index": index},
             children=[
                 html.Div(

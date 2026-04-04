@@ -59,8 +59,24 @@
     for (var i = 0; i < markers.length; i++) {
       var el = document.querySelector(markers[i]);
       if (el && el.children.length > 0) {
+        // 1. Fade out opacity
         overlay.classList.add("hidden");
-        setTimeout(function () { overlay.style.display = "none"; }, 500);
+
+        // 2. Snapshot rendered height, then animate collapse
+        var h = overlay.offsetHeight;
+        overlay.style.minHeight = "0";
+        overlay.style.height = h + "px";
+        // Force reflow so the browser registers the locked height before transitioning
+        void overlay.offsetHeight;
+        overlay.style.height = "0";
+        overlay.style.paddingTop = "0";
+        overlay.style.paddingBottom = "0";
+
+        // 3. Remove from flow after animation finishes
+        setTimeout(function () { overlay.style.display = "none"; }, 600);
+
+        // 4. Trigger KPI counter animation after content fades in
+        setTimeout(animateAllKpiValues, 300);
         return;
       }
     }
@@ -153,4 +169,95 @@
     }
   }
   waitForBadge();
+})();
+
+
+/* ── KPI counter animation ───────────────────────────────────── */
+
+function animateKpiValue(el) {
+  var original = el.textContent.trim();
+
+  // Find the first number in the string (handles $1,234.56 / +12.34% / 0.532 / 185)
+  var match = original.match(/[\d,]+\.?\d*/);
+  if (!match) return;
+
+  var numStr = match[0].replace(/,/g, '');
+  var target = parseFloat(numStr);
+  if (isNaN(target) || target === 0) return;
+
+  var decimalPlaces = numStr.includes('.') ? numStr.split('.')[1].length : 0;
+  var numStart = original.indexOf(match[0]);
+  var prefix = original.slice(0, numStart);
+  var suffix = original.slice(numStart + match[0].length);
+
+  var duration = 750;
+  var startTime = null;
+
+  function step(ts) {
+    if (!startTime) startTime = ts;
+    var progress = Math.min((ts - startTime) / duration, 1);
+    // Ease-out cubic
+    var eased = 1 - Math.pow(1 - progress, 3);
+    var current = target * eased;
+
+    var formatted = current.toFixed(decimalPlaces);
+    var parts = formatted.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    formatted = parts.join('.');
+
+    el.textContent = prefix + formatted + suffix;
+
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      el.textContent = original; // ensure exact final value
+    }
+  }
+
+  requestAnimationFrame(step);
+}
+
+function animateAllKpiValues() {
+  document.querySelectorAll('.kpi-value, .spot-price').forEach(function (el) {
+    animateKpiValue(el);
+  });
+}
+
+
+/* ── Scroll-triggered reveal (IntersectionObserver) ─────────── */
+
+(function () {
+  if (!window.IntersectionObserver) return;
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  function observeAll() {
+    document.querySelectorAll('.reveal-on-scroll').forEach(function (el) {
+      // Only observe elements not yet visible
+      if (!el.classList.contains('visible')) {
+        observer.observe(el);
+      }
+    });
+  }
+
+  // Poll until reveal elements exist in the DOM
+  function waitForRevealElements() {
+    if (document.querySelectorAll('.reveal-on-scroll').length > 0) {
+      observeAll();
+      // Re-observe on Dash page transitions via a lightweight MutationObserver
+      var mo = new MutationObserver(function () { observeAll(); });
+      mo.observe(document.body, { childList: true, subtree: true });
+    } else {
+      setTimeout(waitForRevealElements, 200);
+    }
+  }
+
+  waitForRevealElements();
 })();

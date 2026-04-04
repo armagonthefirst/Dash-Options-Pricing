@@ -87,10 +87,34 @@ def build_kpi_grid(kpis: dict) -> list[html.Div]:
     ]
 
 
+_CHART_THEME = dict(
+    paper_bgcolor="#0d1624",
+    plot_bgcolor="#0d1624",
+    font=dict(family="Roboto, sans-serif", color="#9fb0c8", size=12),
+    title_font=dict(family="Roboto, sans-serif", size=13, color="#c7d6ea"),
+    xaxis=dict(
+        gridcolor="rgba(148, 163, 184, 0.08)",
+        linecolor="rgba(148, 163, 184, 0.15)",
+        tickfont=dict(size=11),
+        zerolinecolor="rgba(148, 163, 184, 0.12)",
+    ),
+    yaxis=dict(
+        gridcolor="rgba(148, 163, 184, 0.08)",
+        linecolor="rgba(148, 163, 184, 0.15)",
+        tickfont=dict(size=11),
+        zerolinecolor="rgba(148, 163, 184, 0.12)",
+    ),
+    legend=dict(
+        bgcolor="rgba(0,0,0,0)",
+        font=dict(size=11),
+    ),
+)
+
+
 def make_empty_figure(title: str, message: str = "Live data unavailable") -> go.Figure:
     fig = go.Figure()
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title=title,
         margin=dict(l=30, r=20, t=55, b=30),
         height=320,
@@ -104,9 +128,9 @@ def make_empty_figure(title: str, message: str = "Live data unavailable") -> go.
                 showarrow=False,
             )
         ],
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
     )
+    fig.update_xaxes(visible=False)
+    fig.update_yaxes(visible=False)
     return fig
 
 
@@ -147,20 +171,28 @@ def make_price_figure(ticker: str) -> go.Figure:
     )
 
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title="Price History",
-        xaxis_title="Date",
-        yaxis_title="Price",
+        xaxis_title="",
+        yaxis_title="Price (USD)",
         margin=dict(l=30, r=20, t=55, b=30),
         height=430,
         xaxis_rangeslider_visible=False,
-        legend=dict(orientation="h", y=1.08, x=0),
+    )
+    fig.update_layout(legend=dict(orientation="h", y=1.08, x=0, bgcolor="rgba(0,0,0,0)", font=dict(size=11)))
+    fig.update_traces(
+        selector=dict(type="candlestick"),
+        increasing_fillcolor="#35c48b",
+        increasing_line_color="#35c48b",
+        decreasing_fillcolor="#ff6b81",
+        decreasing_line_color="#ff6b81",
     )
     return fig
 
 
 def make_volatility_figure(ticker: str) -> go.Figure:
     history_df = get_volatility_chart_frame(ticker, display_window=252)
+    kpis = get_ticker_kpis(ticker)
 
     fig = go.Figure()
 
@@ -170,7 +202,7 @@ def make_volatility_figure(ticker: str) -> go.Figure:
             y=history_df["rv20"],
             mode="lines",
             name="20D Realized Vol",
-            line=dict(width=2),
+            line=dict(width=2, color="#4ea1ff"),
         )
     )
 
@@ -180,19 +212,29 @@ def make_volatility_figure(ticker: str) -> go.Figure:
             y=history_df["rv60"],
             mode="lines",
             name="60D Realized Vol",
-            line=dict(width=2, dash="dot"),
+            line=dict(width=2, color="#63d2ff", dash="dot"),
         )
     )
 
+    fig.add_hline(
+        y=kpis["atm_iv_30d"],
+        line_dash="dash",
+        line_color="#f6c177",
+        line_width=1.5,
+        annotation_text="ATM IV (30D)",
+        annotation_position="top right",
+        annotation_font=dict(size=11, color="#f6c177"),
+    )
+
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title="Rolling Volatility Regime",
-        xaxis_title="Date",
+        xaxis_title="",
         yaxis_title="Annualized Volatility",
         margin=dict(l=30, r=20, t=55, b=30),
         height=360,
-        legend=dict(orientation="h", y=1.08, x=0),
     )
+    fig.update_layout(legend=dict(orientation="h", y=1.08, x=0, bgcolor="rgba(0,0,0,0)", font=dict(size=11)))
     fig.update_yaxes(tickformat=".0%")
     return fig
 
@@ -213,8 +255,12 @@ def make_term_structure_figure(ticker: str) -> go.Figure:
         )
     )
 
+    fig.update_traces(
+        line_color="#4ea1ff",
+        marker=dict(color="#4ea1ff", size=7, line=dict(width=1.5, color="#0d1624")),
+    )
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title="ATM IV Term Structure",
         xaxis_title="Days to Expiry",
         yaxis_title="Implied Volatility",
@@ -251,15 +297,34 @@ def make_smile_figure(ticker: str, expiry: str) -> go.Figure:
 
     dte = int(df["dte"].iloc[0]) if not df.empty else 0
 
+    fig.update_traces(
+        selector=dict(name="Calls"),
+        line=dict(color="#4ea1ff", width=2),
+        marker=dict(color="#4ea1ff", size=6),
+    )
+    fig.update_traces(
+        selector=dict(name="Puts"),
+        line=dict(color="#ff6b81", width=2, dash="dot"),
+        marker=dict(color="#ff6b81", size=6),
+    )
+    fig.add_vline(
+        x=1.0,
+        line_dash="dash",
+        line_color="rgba(148, 163, 184, 0.35)",
+        line_width=1,
+        annotation_text="ATM",
+        annotation_position="top",
+        annotation_font=dict(size=10, color="#7d90ac"),
+    )
     fig.update_layout(
-        template="plotly_dark",
+        **_CHART_THEME,
         title=f"IV Smile / Skew ({dte} DTE)",
         xaxis_title="Moneyness (K / S)",
         yaxis_title="Implied Volatility",
         margin=dict(l=30, r=20, t=55, b=30),
         height=320,
-        legend=dict(orientation="h", y=1.08, x=0),
     )
+    fig.update_layout(legend=dict(orientation="h", y=1.08, x=0, bgcolor="rgba(0,0,0,0)", font=dict(size=11)))
     fig.update_yaxes(tickformat=".0%")
     return fig
 

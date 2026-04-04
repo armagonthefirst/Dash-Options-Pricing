@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;1,400&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 :root {
   --bg: #0b1220;
   --bg-elev: #121b2d;
@@ -35,7 +37,7 @@ body {
     radial-gradient(circle at top left, rgba(99, 210, 255, 0.05), transparent 20%),
     linear-gradient(180deg, #0b1220 0%, #0a111d 100%);
   color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+  font-family: Roboto, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
 }
 
@@ -80,6 +82,7 @@ a {
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text);
+  font-family: 'Syne', sans-serif;
 }
 
 .app-subtitle {
@@ -134,6 +137,12 @@ a {
   background: rgba(78, 161, 255, 0.08);
 }
 
+.nav-link.active {
+  color: var(--text) !important;
+  border-bottom: 2px solid var(--accent);
+  background: rgba(78, 161, 255, 0.07);
+}
+
 .app-main {
   padding: 28px 0 46px;
 }
@@ -163,6 +172,11 @@ a {
   font-size: clamp(1.5rem, 1.9vw, 2.1rem);
   font-weight: 700;
   letter-spacing: -0.025em;
+  font-family: 'Syne', sans-serif;
+  background: linear-gradient(120deg, #c7d6ea 0%, #4ea1ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .page-description {
@@ -233,6 +247,7 @@ a {
   font-size: 1.06rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  font-family: 'Syne', sans-serif;
 }
 
 .section-description {
@@ -282,7 +297,7 @@ a {
 }
 
 .ticker-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.015);
   border-color: rgba(78, 161, 255, 0.3);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
 }
@@ -306,6 +321,7 @@ a {
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  font-family: 'Syne', sans-serif;
 }
 
 .ticker-name {
@@ -322,6 +338,7 @@ a {
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .ticker-card-metrics {
@@ -352,8 +369,9 @@ a {
 
 .metric-value {
   font-size: 1rem;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .metric-value.positive,
@@ -373,7 +391,8 @@ a {
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 0.85rem;
-  font-weight: 650;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .price-change-pill.positive {
@@ -496,6 +515,13 @@ a {
 
 .kpi-card {
   padding: 18px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(78, 161, 255, 0.22);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
 }
 
 .kpi-label {
@@ -509,6 +535,7 @@ a {
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .kpi-subtext {
@@ -689,9 +716,10 @@ a {
 
 .detail-value {
   color: var(--text);
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   font-weight: 600;
   word-break: break-word;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .methodology-grid {
@@ -729,12 +757,26 @@ a {
   justify-content: center;
   min-height: 340px;
   padding: 60px 20px;
-  transition: opacity 0.45s ease;
+  overflow: hidden;
+  transition: opacity 0.45s ease,
+              height 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              padding-top 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+              padding-bottom 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-loading-overlay.hidden {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Keep page content invisible while overlay is active, then crossfade in */
+.page-loading-overlay + * {
+  opacity: 0;
+  transition: opacity 0.5s ease 0.15s;
+}
+
+.page-loading-overlay.hidden + * {
+  opacity: 1;
 }
 
 .loading-spinner {
@@ -961,8 +1003,9 @@ a {
 .method-section-header h2 {
   margin: 0;
   font-size: 1.06rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0;
 }
 
 .method-chevron {
@@ -996,6 +1039,13 @@ a {
 
 .method-section-body p:last-child {
   margin-bottom: 0;
+}
+
+.method-section-body li {
+  color: var(--text-soft);
+  font-size: 0.94rem;
+  line-height: 1.6;
+  margin-bottom: 6px;
 }
 
 .method-formula {
@@ -1103,12 +1153,86 @@ a {
 .reveal-on-scroll {
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transition: opacity 0.55s ease, transform 0.55s ease;
 }
 
 .reveal-on-scroll.visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* =========================================================================
+   Aurora background
+   ========================================================================= */
+
+.aurora-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 700px;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.aurora-bg::before {
+  content: '';
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(78, 161, 255, 0.07), transparent 70%);
+  top: -280px;
+  right: -120px;
+  animation: aurora-drift-a 22s ease-in-out infinite alternate;
+}
+
+.aurora-bg::after {
+  content: '';
+  position: absolute;
+  width: 550px;
+  height: 550px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 210, 255, 0.05), transparent 70%);
+  top: -180px;
+  left: -100px;
+  animation: aurora-drift-b 28s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift-a {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-70px, 55px) scale(1.18); }
+}
+
+@keyframes aurora-drift-b {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(55px, 35px) scale(1.12); }
+}
+
+/* =========================================================================
+   Chart card hover glow
+   ========================================================================= */
+
+.section-card {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.section-card:hover {
+  border-color: rgba(78, 161, 255, 0.22);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(78, 161, 255, 0.08), 0 0 60px rgba(78, 161, 255, 0.04);
+}
+
+/* =========================================================================
+   Ticker card IV-spread accent border
+   ========================================================================= */
+
+.ticker-card.iv-positive {
+  border-left: 3px solid var(--positive);
+}
+
+.ticker-card.iv-negative {
+  border-left: 3px solid var(--negative);
 }
 
 @media (max-width: 1280px) {
