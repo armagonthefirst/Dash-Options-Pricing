@@ -131,13 +131,14 @@ def layout() -> html.Div:
                     html.Div(
                         className="page-header-copy",
                         children=[
-                            html.H1("Welcome to my options pricing dashboard!", className="page-title"),
+                            html.H1("Overview", className="page-title"),
                             html.P(
                                 (
-                                    "This app pulls live market data for 10 of the most actively "
-                                    "traded U.S. stocks and ETFs, refreshing every hour. Click on "
-                                    "any ticker below to explore its volatility profile, option "
-                                    "chain, and see how my pricing model compares to the market."
+                                    "Live market data across 10 actively traded U.S. equities and ETFs, "
+                                    "updated hourly. Select a ticker to explore its volatility regime, "
+                                    "implied volatility structure, and option contracts — with each "
+                                    "contract priced against a binomial model. Check out the methodology "
+                                    "page to learn more."
                                 ),
                                 className="page-description",
                             ),
