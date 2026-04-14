@@ -5,7 +5,7 @@ from time import sleep
 from dash import Dash
 
 from layout import create_layout
-from data.analytics import clear_analytics_cache, get_live_ticker_kpis, TICKER_ORDER
+from data.analytics import clear_analytics_cache, get_live_ticker_kpis, get_live_iv_term_structure, get_live_iv_smile, TICKER_ORDER
 from data.contract_analytics import clear_contract_analytics_cache
 from data.market_data import clear_market_data_cache, fetch_dividend_yield
 
@@ -51,7 +51,15 @@ def _prewarm_cache() -> None:
             fetch_dividend_yield(ticker)
         except Exception:
             pass
-        sleep(3)  # breathe between tickers to avoid CPU spike
+        try:
+            get_live_iv_term_structure(ticker)
+        except Exception:
+            pass
+        try:
+            get_live_iv_smile(ticker)
+        except Exception:
+            pass
+        sleep(3)  # breathe between tickers to avoid rate limiting
 
 
 def _cache_refresh_loop() -> None:

@@ -46,10 +46,6 @@ TARGET_DTE = 30
 
 DEFAULT_SMILE_LOWER_MONEYNESS = 0.85
 DEFAULT_SMILE_UPPER_MONEYNESS = 1.15
-USABLE_MIN_NEAR_ATM_CONTRACTS = 4
-USABLE_MIN_UNIQUE_STRIKES = 3
-USABLE_ATM_ANCHOR_TOLERANCE = 0.05
-USABLE_REQUIRED_COLUMNS = ("strike", "mid", "iv", "moneyness")
 
 
 def _validate_ticker(ticker: str) -> str:
@@ -106,127 +102,12 @@ def _forecast_vol_from_history(history: pd.DataFrame, ticker: str) -> float:
     return float(np.clip(forecast, 0.08, 1.20))
 
 
-@ttl_cache(maxsize=512)
-def _get_live_expiry_usability_snapshot(ticker: str, expiry: str) -> dict:
-    """
-    Lightweight usability check using raw yfinance data only.
-
-    Intentionally avoids calling get_live_option_chain so that no IV solving
-    or binomial-tree computation is triggered for expiries that may be
-    discarded as unusable.  Only strike arithmetic and yfinance's own
-    impliedVolatility column are used here.
-    """
-    ticker = _validate_ticker(ticker)
-
-    fallback_dte = None
-    try:
-        fallback_dte = int(
-            (pd.Timestamp(expiry).normalize() - pd.Timestamp.today().normalize()).days
-        )
-    except Exception:
-        pass
-
-    snapshot = {
-        "expiry": expiry,
-        "dte": fallback_dte,
-        "n_total": 0,
-        "n_near_atm": 0,
-        "n_unique_strikes": 0,
-        "has_left": False,
-        "has_right": False,
-        "has_atm_anchor": False,
-        "is_usable": False,
-    }
-
-    try:
-        history = get_live_price_history(ticker)
-        spot = float(history["Close"].iloc[-1])
-        calls_df, puts_df = fetch_option_chain(ticker, expiry)
-    except Exception:
-        return snapshot
-
-    frames = [df for df in [calls_df, puts_df] if df is not None and not df.empty]
-    if not frames:
-        return snapshot
-
-    raw = pd.concat(frames, ignore_index=True)
-
-    if "strike" not in raw.columns:
-        return snapshot
-
-    raw["strike"] = pd.to_numeric(raw["strike"], errors="coerce")
-    raw = raw.dropna(subset=["strike"])
-    raw = raw[raw["strike"] > 0].copy()
-
-    if raw.empty:
-        return snapshot
-
-    # Use yfinance's own impliedVolatility — no binomial solving needed here
-    if "impliedVolatility" in raw.columns:
-        raw["impliedVolatility"] = pd.to_numeric(raw["impliedVolatility"], errors="coerce")
-        raw = raw[raw["impliedVolatility"].between(0.01, 3.0)].copy()
-
-    if raw.empty:
-        return snapshot
-
-    raw["moneyness"] = raw["strike"] / spot
-
-    near_atm = raw[
-        raw["moneyness"].between(
-            DEFAULT_SMILE_LOWER_MONEYNESS,
-            DEFAULT_SMILE_UPPER_MONEYNESS,
-            inclusive="both",
-        )
-    ]
-
-    n_total = int(len(raw))
-    n_near_atm = int(len(near_atm))
-    n_unique_strikes = int(near_atm["strike"].nunique()) if not near_atm.empty else 0
-    has_left = bool((near_atm["moneyness"] < 1.0).any()) if not near_atm.empty else False
-    has_right = bool((near_atm["moneyness"] > 1.0).any()) if not near_atm.empty else False
-    has_atm_anchor = (
-        bool((near_atm["moneyness"].sub(1.0).abs() <= USABLE_ATM_ANCHOR_TOLERANCE).any())
-        if not near_atm.empty
-        else False
-    )
-
-    is_usable = (
-        n_near_atm >= USABLE_MIN_NEAR_ATM_CONTRACTS
-        and n_unique_strikes >= USABLE_MIN_UNIQUE_STRIKES
-        and has_left
-        and has_right
-        and has_atm_anchor
-    )
-
-    snapshot.update(
-        {
-            "n_total": n_total,
-            "n_near_atm": n_near_atm,
-            "n_unique_strikes": n_unique_strikes,
-            "has_left": has_left,
-            "has_right": has_right,
-            "has_atm_anchor": has_atm_anchor,
-            "is_usable": is_usable,
-        }
-    )
-
-    return snapshot
-
-
 @ttl_cache(maxsize=128)
 def get_live_usable_expiries(ticker: str, max_usable: int = 5) -> tuple[str, ...]:
-    """
-    Return usable expiries, checking at most enough to find ``max_usable``.
-
-    Expiries are sorted by proximity to TARGET_DTE so the most relevant
-    ones are tested first, avoiding expensive usability checks on all
-    available expiries.
-    """
     ticker = _validate_ticker(ticker)
 
     all_expiries = list(get_live_expiries(ticker))
 
-    # Sort by proximity to target DTE so we check the most useful ones first.
     def _dte_distance(expiry: str) -> int:
         try:
             dte = int((pd.Timestamp(expiry).normalize() - pd.Timestamp.today().normalize()).days)
@@ -235,21 +116,9 @@ def get_live_usable_expiries(ticker: str, max_usable: int = 5) -> tuple[str, ...
             return 9999
 
     all_expiries.sort(key=_dte_distance)
-
-    usable = []
-    for expiry in all_expiries:
-        snapshot = _get_live_expiry_usability_snapshot(ticker, expiry)
-        if snapshot["is_usable"]:
-            usable.append(expiry)
-            if len(usable) >= max_usable:
-                break
-
-    if not usable:
-        raise DataUnavailableError(f"No usable expiries found for {ticker}.")
-
-    # Return sorted by date for consistent downstream ordering.
-    usable.sort()
-    return tuple(usable)
+    selected = all_expiries[:max_usable]
+    selected.sort()
+    return tuple(selected)
 
 
 @ttl_cache(maxsize=128)
@@ -400,12 +269,6 @@ def get_live_iv_smile(ticker: str, expiry: str | None = None) -> pd.DataFrame:
     if expiry is None:
         expiry = get_live_default_expiry(ticker)
 
-    snapshot = _get_live_expiry_usability_snapshot(ticker, expiry)
-    if not snapshot["is_usable"]:
-        raise DataUnavailableError(
-            f"Expiry {expiry} is not usable for IV smile analytics for {ticker}."
-        )
-
     chain = get_live_option_chain(ticker, expiry)
     smile = get_iv_smile_frame(
         chain,
@@ -474,7 +337,6 @@ def get_live_supported_tickers() -> list[dict[str, str]]:
 
 
 def clear_analytics_cache() -> None:
-    _get_live_expiry_usability_snapshot.cache_clear()
     get_live_price_history.cache_clear()
     get_live_expiries.cache_clear()
     get_live_usable_expiries.cache_clear()
