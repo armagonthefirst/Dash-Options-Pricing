@@ -5,7 +5,7 @@ register_page(
     __name__,
     path="/methodology",
     name="Methodology",
-    title="Methodology | Live Options Pricing Dashboard",
+    title="Methodology | Live Stock Options Pricing Dashboard",
 )
 
 

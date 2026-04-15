@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Thread
 from time import sleep
@@ -40,22 +41,30 @@ def _clear_all_caches() -> None:
     clear_contract_analytics_cache()
 
 
+def _prewarm_ticker(ticker: str) -> None:
+    try:
+        get_live_ticker_kpis(ticker)
+    except Exception:
+        pass
+    try:
+        get_live_iv_term_structure(ticker)
+    except Exception:
+        pass
+    try:
+        get_live_iv_smile(ticker)
+    except Exception:
+        pass
+
+
 def _prewarm_cache() -> None:
-    sleep(15)  # let server stabilise before starting
-    for ticker in TICKER_ORDER:
-        try:
-            get_live_ticker_kpis(ticker)
-        except Exception:
-            pass
-        try:
-            get_live_iv_term_structure(ticker)
-        except Exception:
-            pass
-        try:
-            get_live_iv_smile(ticker)
-        except Exception:
-            pass
-        sleep(3)  # breathe between tickers to avoid rate limiting
+    sleep(3)  # let server stabilise before starting
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_prewarm_ticker, ticker) for ticker in TICKER_ORDER]
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception:
+                pass
 
 
 def _cache_refresh_loop() -> None:

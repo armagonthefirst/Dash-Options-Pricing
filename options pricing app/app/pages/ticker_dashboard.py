@@ -23,7 +23,7 @@ register_page(
     __name__,
     path="/ticker-dashboard",
     name="Ticker Dashboard",
-    title="Ticker Dashboard | Live Options Pricing Dashboard",
+    title="Ticker Dashboard | Live Stock Options Pricing Dashboard",
 )
 
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from data.cache import ttl_cache
 
 import numpy as np
@@ -212,12 +214,14 @@ def get_live_ticker_kpis(ticker: str) -> dict:
 def get_live_screener_data() -> pd.DataFrame:
     rows = []
 
-    for ticker in TICKER_ORDER:
-        try:
-            rows.append(get_live_ticker_kpis(ticker))
-        except Exception:
-            # Skip broken tickers rather than failing the entire screener.
-            continue
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(get_live_ticker_kpis, ticker): ticker for ticker in TICKER_ORDER}
+        for future in as_completed(futures):
+            try:
+                rows.append(future.result())
+            except Exception:
+                # Skip broken tickers rather than failing the entire screener.
+                continue
 
     if not rows:
         raise DataUnavailableError("No screener rows could be built from live data.")

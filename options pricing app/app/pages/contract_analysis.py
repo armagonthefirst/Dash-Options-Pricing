@@ -38,7 +38,7 @@ register_page(
     __name__,
     path="/contract-analysis",
     name="Contract Analysis",
-    title="Contract Analysis | Live Options Pricing Dashboard",
+    title="Contract Analysis | Live Stock Options Pricing Dashboard",
 )
 
 

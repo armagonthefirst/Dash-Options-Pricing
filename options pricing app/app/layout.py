@@ -1,7 +1,7 @@
 from dash import dcc, html, page_container, page_registry
 
 
-APP_TITLE = "Options Pricing Dashboard"
+APP_TITLE = "Stock Options Pricing Dashboard"
 
 
 def build_nav_links():

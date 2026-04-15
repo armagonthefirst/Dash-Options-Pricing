@@ -7,7 +7,7 @@ register_page(
     __name__,
     path="/",
     name="Overview",
-    title="Overview | Live Options Pricing Dashboard",
+    title="Overview | Live Stock Options Pricing Dashboard",
 )
 
 
@@ -137,7 +137,7 @@ def layout() -> html.Div:
                                     "Live market data across 10 actively traded U.S. equities and ETFs, "
                                     "updated hourly. Select a ticker to explore its volatility regime, "
                                     "implied volatility structure, and option contracts — with each "
-                                    "contract priced against a binomial model. Check out the methodology "
+                                    "contract priced against my custom binomial model. Check out the methodology "
                                     "page to learn more."
                                 ),
                                 className="page-description",
