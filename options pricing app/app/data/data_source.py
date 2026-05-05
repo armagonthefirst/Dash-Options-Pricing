@@ -15,10 +15,10 @@ if USE_LIVE_DATA:
         get_live_iv_term_structure as get_iv_term_structure,
         get_live_option_chain as get_option_chain,
         get_live_price_chart_frame as get_price_chart_frame,
+        get_live_price_chart_frame as get_volatility_chart_frame,
         get_live_screener_data as get_screener_data,
         get_live_supported_tickers as get_supported_tickers,
         get_live_ticker_kpis as get_ticker_kpis,
-        get_live_volatility_chart_frame as get_volatility_chart_frame,
     )
     from data.contract_analytics import (
         get_live_contract_snapshot as get_contract_snapshot,

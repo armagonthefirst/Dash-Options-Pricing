@@ -1,6 +1,7 @@
 from dash import dcc, html, register_page
 
 from data.data_source import get_screener_data
+from utils.formatters import format_currency, format_pct, format_signed_pct
 
 
 register_page(
@@ -8,20 +9,8 @@ register_page(
     path="/",
     name="Overview",
     title="Overview | Live Stock Options Pricing Dashboard",
+    in_nav=True,
 )
-
-
-def format_currency(value: float) -> str:
-    return f"${value:,.2f}"
-
-
-def format_pct(value: float) -> str:
-    return f"{value * 100:.2f}%"
-
-
-def format_signed_pct(value: float) -> str:
-    sign = "+" if value >= 0 else ""
-    return f"{sign}{value * 100:.2f}%"
 
 
 def build_metric(label: str, value: str, value_class: str = "metric-value") -> html.Div:
@@ -35,7 +24,6 @@ def build_metric(label: str, value: str, value_class: str = "metric-value") -> h
 
 
 def build_ticker_card(row: dict, index: int) -> html.Div:
-    change_class = "metric-value positive" if row["price_change_1d"] >= 0 else "metric-value negative"
     change_display_class = "positive" if row["price_change_1d"] >= 0 else "negative"
     spread_class = (
         "metric-value positive"
@@ -112,14 +100,11 @@ def layout() -> html.Div:
     try:
         screener_df = get_screener_data()
         screener_rows = screener_df.to_dict("records")
-        universe_value = f"{len(screener_rows)} tickers"
         ticker_grid = html.Div(
             className="ticker-grid",
             children=[build_ticker_card(row, i) for i, row in enumerate(screener_rows)],
         )
     except Exception as exc:
-        screener_rows = []
-        universe_value = "Unavailable"
         ticker_grid = build_screener_error_state(str(exc))
 
     return html.Div(

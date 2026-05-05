@@ -18,8 +18,6 @@ OPTION_NUMERIC_COLUMNS = [
     "lastPrice",
     "bid",
     "ask",
-    "change",
-    "percentChange",
     "volume",
     "openInterest",
     "impliedVolatility",
@@ -235,7 +233,7 @@ def normalize_option_chain(
     min_valid_iv: float = MIN_VALID_IV,
     max_valid_iv: float = MAX_VALID_IV,
     max_relative_spread: float | None = MAX_RELATIVE_SPREAD,
-    max_near_atm: int | None = 10,
+    max_near_atm: int | None = None,
 ) -> pd.DataFrame:
     """
     Merge and normalize raw yfinance calls/puts into one standard chain frame.

@@ -11,7 +11,7 @@ import yfinance as yf
 from data.cache import ttl_cache
 
 
-DEFAULT_HISTORY_PERIOD = "2y"
+DEFAULT_HISTORY_PERIOD = "1y"
 DEFAULT_HISTORY_INTERVAL = "1d"
 
 ALPACA_DATA_BASE = "https://data.alpaca.markets"
@@ -85,18 +85,10 @@ def _strip_timezone(series: pd.Series) -> pd.Series:
 def _ensure_date_column(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df.copy()
-
-    out = df.reset_index().copy()
-
-    if "Datetime" in out.columns:
-        out = out.rename(columns={"Datetime": "Date"})
-    elif "index" in out.columns and "Date" not in out.columns:
-        out = out.rename(columns={"index": "Date"})
-
+    out = df.copy()
     if "Date" in out.columns:
         out["Date"] = _strip_timezone(out["Date"])
         out = out.sort_values("Date").drop_duplicates(subset="Date", keep="last")
-
     return out.reset_index(drop=True)
 
 
@@ -127,14 +119,9 @@ def _empty_option_frame() -> pd.DataFrame:
             "lastPrice",
             "bid",
             "ask",
-            "change",
-            "percentChange",
             "volume",
             "openInterest",
             "impliedVolatility",
-            "inTheMoney",
-            "contractSize",
-            "currency",
             "expiry",
             "optionType",
         ]
@@ -181,7 +168,6 @@ def _fetch_price_history_cached(
     ticker: str,
     period: str = DEFAULT_HISTORY_PERIOD,
     interval: str = DEFAULT_HISTORY_INTERVAL,
-    auto_adjust: bool = False,
 ) -> pd.DataFrame:
     ticker = _normalize_ticker(ticker)
 
@@ -234,14 +220,12 @@ def fetch_price_history(
     ticker: str,
     period: str = DEFAULT_HISTORY_PERIOD,
     interval: str = DEFAULT_HISTORY_INTERVAL,
-    auto_adjust: bool = False,
 ) -> pd.DataFrame:
     """Return OHLCV price history from Alpaca, lightly standardized."""
     return _fetch_price_history_cached(
         ticker=ticker,
         period=period,
         interval=interval,
-        auto_adjust=auto_adjust,
     ).copy()
 
 
@@ -256,7 +240,7 @@ def _fetch_expiries_cached(ticker: str) -> tuple[str, ...]:
     # Use cached price history (guaranteed hit by analytics layer) to get spot
     # so we can narrow the strike window and minimise data returned.
     try:
-        history = _fetch_price_history_cached(ticker, "1y", "1d", False)
+        history = _fetch_price_history_cached(ticker, "1y", "1d")
         spot = float(pd.to_numeric(history["Close"], errors="coerce").dropna().iloc[-1])
         strike_lower = round(spot * 0.98)
         strike_upper = round(spot * 1.02)
@@ -323,7 +307,7 @@ def _fetch_option_chain_cached(ticker: str, expiry: str) -> Tuple[pd.DataFrame, 
         )
 
     try:
-        history = _fetch_price_history_cached(ticker, "1y", "1d", False)
+        history = _fetch_price_history_cached(ticker, "1y", "1d")
         spot = float(pd.to_numeric(history["Close"], errors="coerce").dropna().iloc[-1])
         strike_lower = int(spot * 0.85)
         strike_upper = int(spot * 1.15)
@@ -414,21 +398,6 @@ def fetch_option_chain(ticker: str, expiry: str) -> tuple[pd.DataFrame, pd.DataF
     """
     calls, puts = _fetch_option_chain_cached(ticker, expiry)
     return calls.copy(), puts.copy()
-
-
-def fetch_latest_spot(ticker: str) -> float:
-    """Use recent daily history as the source of truth for current/most recent spot."""
-    history = fetch_price_history(ticker, period="5d", interval="1d", auto_adjust=False)
-
-    close_col = "Close"
-    if close_col not in history.columns:
-        raise DataUnavailableError(f"Close column unavailable for {ticker} spot lookup.")
-
-    close_series = pd.to_numeric(history[close_col], errors="coerce").dropna()
-    if close_series.empty:
-        raise DataUnavailableError(f"No valid recent close values available for {ticker}.")
-
-    return float(close_series.iloc[-1])
 
 
 # ---------------------------------------------------------------------------

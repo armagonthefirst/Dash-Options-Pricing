@@ -5,10 +5,8 @@ APP_TITLE = "Stock Options Pricing Dashboard"
 
 
 def build_nav_links():
-    # Only show Overview (home) and Methodology in the nav bar.
-    # Ticker Dashboard and Contract Analysis are reached through the app flow.
-    NAV_PAGES = {"/", "/methodology"}
-
+    # Pages declare themselves as nav-visible via in_nav=True in register_page().
+    # No manual list to update when new pages are added.
     if not page_registry:
         return [
             html.Span(
@@ -18,7 +16,7 @@ def build_nav_links():
         ]
 
     pages = sorted(
-        (p for p in page_registry.values() if p["path"] in NAV_PAGES),
+        (p for p in page_registry.values() if p.get("in_nav")),
         key=lambda page: (0 if page["path"] == "/" else 1, page["name"]),
     )
 
@@ -102,7 +100,7 @@ def create_layout():
             html.Footer(
                 className="app-footer",
                 children=[
-                    html.Span("Data sourced from Yahoo Finance", className="footer-item"),
+                    html.Span("Data sourced from Alpaca Markets", className="footer-item"),
                 ],
             ),
         ],

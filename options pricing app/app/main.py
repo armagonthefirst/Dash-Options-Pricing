@@ -21,7 +21,7 @@ app = Dash(
     pages_folder=str(PAGES_DIR),
     assets_folder=str(ASSETS_DIR),
     suppress_callback_exceptions=True,
-    title="Options Pricing ML App",
+    title="Stock Options Pricing Dashboard",
 )
 
 server = app.server
@@ -56,8 +56,9 @@ def _prewarm_ticker(ticker: str) -> None:
         pass
 
 
-def _prewarm_cache() -> None:
-    sleep(3)  # let server stabilise before starting
+def _prewarm_cache(delay: bool = False) -> None:
+    if delay:
+        sleep(3)  # let server stabilise before starting
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(_prewarm_ticker, ticker) for ticker in TICKER_ORDER]
         for future in as_completed(futures):
@@ -79,7 +80,7 @@ refresh_thread = Thread(target=_cache_refresh_loop, daemon=True)
 refresh_thread.start()
 
 # Pre-warm the cache at startup so the first visitor hits a hot cache
-prewarm_thread = Thread(target=_prewarm_cache, daemon=True)
+prewarm_thread = Thread(target=lambda: _prewarm_cache(delay=True), daemon=True)
 prewarm_thread.start()
 
 if __name__ == "__main__":

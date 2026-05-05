@@ -6,6 +6,7 @@ register_page(
     path="/methodology",
     name="Methodology",
     title="Methodology | Live Stock Options Pricing Dashboard",
+    in_nav=True,
 )
 
 
@@ -68,87 +69,103 @@ def layout() -> html.Div:
                     # -- 1. Overview -----------------------------------------
                     _section("1. The big picture", [
                         (
-                            "The idea behind this app is pretty simple: pull live "
-                            "market data for a handful of popular stocks and ETFs, "
-                            "run my own pricing model on their options, and see how "
-                            "my prices compare to what the market is actually charging."
+                            "This app pulls live market data for ten actively traded "
+                            "U.S. stocks and ETFs, runs a custom options pricing model "
+                            "against each contract, and shows how that model price "
+                            "compares to what the market is charging. The gap between "
+                            "the two is the signal worth paying attention to."
                         ),
                         (
-                            "The typical flow is: browse the screener to spot "
-                            "interesting volatility signals, click into a ticker to "
-                            "explore its volatility charts and option chain, then pick "
-                            "a specific contract to see how my model values it versus "
-                            "the market price."
+                            "The typical workflow: scan the screener for interesting "
+                            "volatility readings, open a ticker to explore its price "
+                            "history, volatility regime, and option chain, then drill "
+                            "into a specific contract to see the model's valuation "
+                            "and Greeks."
                         ),
                     ]),
 
-                    # -- 2. Data Pipeline ------------------------------------
-                    _section("2. Where the data comes from", [
+                    # -- 2. How it's built -----------------------------------
+                    _section("2. How it's built", [
                         (
-                            "All of the live market data comes from Yahoo Finance "
-                            "through a Python library called yfinance. It's not "
-                            "Bloomberg-grade data, but it's free, it's real, and it's "
-                            "good enough to build something meaningful on top of."
+                            "The app is written entirely in Python and built on "
+                            "Plotly Dash, a framework that handles the web interface, "
+                            "routing, and interactivity."
                         ),
                         (
-                            "For each ticker I pull about a year of daily price "
-                            "history (open, high, low, close, volume) and compute "
-                            "things like moving averages and rolling realized "
-                            "volatility from that."
+                            "The pricing models, volatility calculations, and data "
+                            "processing are all written in Python. The interface uses "
+                            "a single-page layout with client-side routing across four "
+                            "views: the screener, ticker dashboard, contract analysis "
+                            "page, and this methodology page."
                         ),
                         (
-                            "Option chains are fetched per expiry date. Each contract "
-                            "gets a few computed fields: days to expiry, moneyness "
-                            "(how far the strike is from the current price), a "
-                            "midpoint price from the bid and ask, and implied "
-                            "volatility."
+                            "Market data is fetched from the Alpaca Markets API and "
+                            "cached in memory on the server. The app is hosted on "
+                            "Azure, which means the cache is always warm and page "
+                            "loads are fast regardless of traffic."
+                        ),
+                    ]),
+
+                    # -- 3. Data Pipeline ------------------------------------
+                    _section("3. Where the data comes from", [
+                        (
+                            "All market data comes from the Alpaca Markets API. "
+                            "Price history, option expiries, and option chains are "
+                            "fetched at startup and kept in a server-side cache."
+                        ),
+                        (
+                            "For each ticker, roughly a year of daily price history "
+                            "is pulled (open, high, low, close, volume). Realized "
+                            "volatility, moving averages, and return series are all "
+                            "derived from that."
+                        ),
+                        (
+                            "Option chains are fetched per expiry from Alpaca's "
+                            "snapshot endpoint. Each contract comes with live bid, "
+                            "ask, and implied volatility. From there the app computes "
+                            "days to expiry, moneyness, and a midpoint price from "
+                            "the bid/ask spread."
                         ),
                         html.Div(
                             className="method-formula",
                             children=(
-                                "What happens outside market hours?\n"
-                                "When the market is closed, Yahoo Finance often "
-                                "returns zeros for bid and ask. When that happens, "
-                                "I fall back to the last traded price and back-solve "
-                                "implied volatility using my binomial pricing model. "
-                                "It's a workaround, but it keeps the app functional "
-                                "24/7."
+                                "Outside market hours\n"
+                                "When markets are closed, Alpaca returns the most "
+                                "recent snapshot from the last trading session. If "
+                                "bid and ask are missing for a contract, the app "
+                                "falls back to the last traded price and back-solves "
+                                "implied volatility using the binomial model to keep "
+                                "the data usable."
                             ),
                         ),
+                    ]),
+
+                    # -- 4. Universe -----------------------------------------
+                    _section("4. Which stocks are covered", [
                         (
-                            "Everything gets cached in memory once it's loaded. So "
-                            "the first page load might take a few seconds while it "
-                            "fetches from Yahoo, but after that it's instant until "
-                            "the cache refreshes."
+                            "The app covers ten of the most actively traded U.S. "
+                            "stocks and ETFs: SPY, QQQ, IWM, AAPL, MSFT, NVDA, AMZN, "
+                            "META, TSLA, and AMD. These all have liquid options markets "
+                            "with tight spreads and substantial open interest, which "
+                            "means the data is reliable and the implied volatility "
+                            "readings are meaningful."
+                        ),
+                        (
+                            "Coverage is limited to single-leg calls and puts across "
+                            "weekly and monthly expiries. No spreads, no multi-leg "
+                            "strategies. The focus is on the core pricing problem."
                         ),
                     ]),
 
-                    # -- 3. Universe -----------------------------------------
-                    _section("3. Which stocks are covered", [
+                    # -- 5. Volatility Forecasting ---------------------------
+                    _section("5. Volatility forecasting", [
                         (
-                            "I picked 10 of the most actively traded U.S. stocks "
-                            "and ETFs: SPY, QQQ, IWM, AAPL, MSFT, NVDA, AMZN, META, "
-                            "TSLA, and AMD. These all have deep options markets with "
-                            "tight spreads and lots of open interest, which means the "
-                            "data is clean and the prices are reliable."
-                        ),
-                        (
-                            "For now the app only covers simple single-leg calls and "
-                            "puts across weekly and monthly expiries. No spreads, no "
-                            "LEAPS, no multi-leg strategies - keeping it focused on "
-                            "the core pricing problem."
-                        ),
-                    ]),
-
-                    # -- 4. Volatility Forecasting ---------------------------
-                    _section("4. Volatility forecasting", [
-                        (
-                            "This is the part I plan to improve the most. Right now "
-                            "the volatility forecast is a simple placeholder - it "
-                            "blends recent realized volatility numbers together with "
-                            "a small per-ticker adjustment. The whole point is that "
-                            "this function can be swapped out for a proper ML model "
-                            "later without changing anything else in the app."
+                            "The volatility forecast is a weighted blend of two "
+                            "realized volatility windows, with a small per-ticker "
+                            "scaling factor applied. The structure is intentional: "
+                            "this function is designed to be a drop-in replacement "
+                            "for an ML model when one is ready. Nothing else in the "
+                            "app needs to change."
                         ),
                         html.Div(
                             className="method-formula",
@@ -161,87 +178,83 @@ def layout() -> html.Div:
                             ),
                         ),
                         (
-                            "The idea is straightforward: weight recent volatility "
-                            "more heavily (65% on the 20-day window) since it "
-                            "captures the current regime, but blend in the longer "
-                            "60-day window (35%) to smooth out short-term noise. "
-                            "The ticker bias accounts for the fact that some stocks "
-                            "tend to mean-revert faster than others."
+                            "Recent volatility gets more weight (65% on the 20-day "
+                            "window) to reflect the current regime, with the 60-day "
+                            "window smoothing out short-term noise. The per-ticker "
+                            "bias accounts for differences in mean-reversion behaviour "
+                            "across stocks."
                         ),
                         (
-                            "The forecast is clamped between 8% and 120% annualized "
-                            "so it never feeds something unreasonable into the "
-                            "pricing model."
+                            "The output is clamped between 8% and 120% annualized "
+                            "to prevent unreasonable inputs reaching the pricing model."
                         ),
                     ]),
 
-                    # -- 5. Implied Volatility -------------------------------
-                    _section("5. Implied volatility", [
+                    # -- 6. Implied Volatility -------------------------------
+                    _section("6. Implied volatility", [
                         (
-                            "Implied volatility (IV) is basically the market's best "
-                            "guess at how much a stock will move. It's backed out of "
-                            "the option's price - if the option is expensive, IV is "
-                            "high, and vice versa."
+                            "Implied volatility (IV) is the market's expectation of "
+                            "how much a stock will move over a given period. It's "
+                            "derived from an option's price: if the option is "
+                            "expensive, IV is high, and vice versa."
                         ),
                         (
-                            "I use ATM (at-the-money) implied volatility from the "
-                            "expiry closest to 30 days out as the main market "
-                            "reference. This gives a clean, comparable number across "
-                            "all 10 tickers."
+                            "ATM implied volatility from the expiry closest to 30 "
+                            "days out is used as the main market reference. This "
+                            "gives a consistent, comparable reading across all "
+                            "ten tickers."
                         ),
                         (
                             "The key signal on the screener is the spread between "
-                            "ATM IV and my forecast. If IV is higher than my "
-                            "forecast, the market is pricing in more risk than my "
-                            "model expects. If it's lower, the market might be "
-                            "underpricing risk. Either way, it's worth investigating."
+                            "ATM IV and the forecast. If IV is above the forecast, "
+                            "the market is pricing in more risk than the model "
+                            "expects. If it's below, the market may be underpricing "
+                            "risk."
                         ),
                     ]),
 
-                    # -- 6. Pricing Models -----------------------------------
-                    _section("6. How options are priced", [
+                    # -- 7. Pricing Models -----------------------------------
+                    _section("7. How options are priced", [
                         (
-                            "The app runs two pricing models side by side. The main "
-                            "one is a binomial tree (specifically the Cox-Ross-"
-                            "Rubinstein model), and the secondary benchmark is "
-                            "Black-Scholes."
+                            "Two models run in parallel. The primary model is a "
+                            "binomial tree (Cox-Ross-Rubinstein), and the secondary "
+                            "benchmark is Black-Scholes."
                         ),
                         html.Div(
                             className="method-formula",
                             children=(
                                 "Binomial tree - the short version:\n\n"
-                                "Imagine the stock price can go up or down at each "
-                                "time step. Build a tree of all possible paths from "
-                                "now to expiry, calculate the option payoff at every "
-                                "endpoint, then work backwards to today, checking at "
-                                "each step whether it's better to exercise early or "
-                                "keep holding.\n\n"
-                                "That's it. The math handles American-style options "
-                                "(where you can exercise any time) which is what all "
-                                "U.S. stock options are."
+                                "The time to expiry is divided into steps. At each "
+                                "step the stock price can move up or down by a fixed "
+                                "factor. The tree is built forward to expiry, option "
+                                "payoffs are calculated at every terminal node, then "
+                                "the model works backwards, checking at each node "
+                                "whether early exercise is more valuable than holding. "
+                                "This makes it correct for American-style options, "
+                                "which is what all U.S. equity options are."
                             ),
                         ),
                         (
-                            "The theoretical price plugs my forecast volatility into "
-                            "the binomial tree. The benchmark price plugs the "
-                            "contract's own implied volatility into Black-Scholes. "
-                            "Comparing the two isolates how much of the pricing gap "
-                            "comes from my vol forecast versus the model itself."
+                            "The theoretical price uses forecast volatility as the "
+                            "input. The benchmark price uses the contract's own "
+                            "implied volatility fed into Black-Scholes. Comparing "
+                            "the two isolates how much of any pricing difference "
+                            "comes from the volatility estimate versus the model "
+                            "structure itself."
                         ),
                         (
-                            "Black-Scholes assumes you can only exercise at expiry "
-                            "(European-style), so for puts especially, the binomial "
-                            "price will be slightly higher since it accounts for the "
-                            "option to exercise early."
+                            "Black-Scholes assumes European-style exercise only, so "
+                            "for puts in particular the binomial price will be "
+                            "slightly higher since it accounts for the value of "
+                            "early exercise."
                         ),
                     ]),
 
-                    # -- 7. Greeks -------------------------------------------
-                    _section("7. Greeks", [
+                    # -- 8. Greeks -------------------------------------------
+                    _section("8. Greeks", [
                         (
-                            "Greeks measure how sensitive an option's price is to "
-                            "changes in different inputs. Think of them as the "
-                            "option's vital signs."
+                            "Greeks measure the sensitivity of an option's price "
+                            "to changes in its inputs."
                         ),
                         html.Table(
                             className="method-param-table",
@@ -271,64 +284,64 @@ def layout() -> html.Div:
                             ],
                         ),
                         (
-                            "Right now the Greeks are calculated using Black-Scholes "
-                            "closed-form formulas, which is standard practice and "
-                            "gives good results for near-ATM contracts. A future "
-                            "upgrade would compute them from the binomial tree "
-                            "directly for better accuracy on deep ITM/OTM options."
+                            "The Greeks are calculated using Black-Scholes closed-form "
+                            "formulas, which is standard and accurate for near-ATM "
+                            "contracts. A future improvement would compute them "
+                            "numerically from the binomial tree for better precision "
+                            "on deep in- or out-of-the-money options."
                         ),
                     ]),
 
-                    # -- 8. Sensitivity Analysis -----------------------------
-                    _section("8. Sensitivity charts", [
+                    # -- 9. Sensitivity Analysis -----------------------------
+                    _section("9. Sensitivity charts", [
                         (
-                            "On the contract analysis page there are two sensitivity "
-                            "charts: one that shows how the option's value changes "
-                            "as volatility moves, and another that shows how it "
-                            "changes as the stock price moves."
+                            "The contract analysis page includes two sensitivity "
+                            "charts: one showing how the option value changes across "
+                            "a range of volatility inputs, and one showing how it "
+                            "changes across a range of stock prices. Everything else "
+                            "is held fixed while one variable moves."
                         ),
                         (
-                            "Each chart varies one input across a range while holding "
-                            "everything else fixed, and runs the binomial pricer at "
-                            "each point. This gives you a visual feel for how "
-                            "exposed the option is to different scenarios."
+                            "Both charts use the binomial pricer at each grid point, "
+                            "giving a realistic picture of how the model responds "
+                            "rather than a linear approximation."
                         ),
                     ]),
 
-                    # -- 9. Limitations --------------------------------------
-                    _section("9. Limitations", [
+                    # -- 10. Limitations -------------------------------------
+                    _section("10. Limitations", [
                         (
-                            "This is a personal project and analytical tool, not "
-                            "a trading system. A few important caveats:"
+                            "This is a personal project and analytical tool, "
+                            "not a trading system."
                         ),
                         html.Ul(
                             className="method-list",
                             children=[
                                 html.Li(
-                                    "The volatility forecast is a simple weighted "
-                                    "average, not a trained ML model (yet)"
+                                    "The volatility forecast is a weighted historical "
+                                    "average, not a trained predictive model"
                                 ),
                                 html.Li(
-                                    "Dividend yield is assumed to be zero for all "
-                                    "tickers"
+                                    "Dividend yield is fetched live and defaults "
+                                    "to 0% if unavailable"
                                 ),
                                 html.Li(
-                                    "The risk-free rate is hardcoded at 4%"
+                                    "The risk-free rate is fixed at 4%"
                                 ),
                                 html.Li(
-                                    "Greeks use European-style (Black-Scholes) "
-                                    "approximations"
+                                    "Greeks are calculated using Black-Scholes "
+                                    "(European-style) approximations"
                                 ),
                                 html.Li(
-                                    "Off-hours data may be stale since Yahoo "
-                                    "Finance doesn't update in real time"
+                                    "Option data outside market hours reflects the "
+                                    "most recent Alpaca snapshot, which may be from "
+                                    "the previous session"
                                 ),
                             ],
                         ),
                         (
-                            "Any pricing gap between my model and the market should "
-                            "be treated as a signal worth investigating, not as a "
-                            "direct trade recommendation."
+                            "Any pricing gap between the model and the market is a "
+                            "signal worth investigating, not a trade recommendation."
                         ),
                     ]),
                 ],

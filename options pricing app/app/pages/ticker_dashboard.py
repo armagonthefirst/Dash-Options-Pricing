@@ -17,6 +17,7 @@ from data.data_source import (
     get_ticker_kpis,
     get_volatility_chart_frame,
 )
+from utils.formatters import format_currency, format_pct, format_signed_pct
 
 
 register_page(
@@ -25,19 +26,6 @@ register_page(
     name="Ticker Dashboard",
     title="Ticker Dashboard | Live Stock Options Pricing Dashboard",
 )
-
-
-def format_currency(value: float) -> str:
-    return f"${value:,.2f}"
-
-
-def format_pct(value: float) -> str:
-    return f"{value * 100:.2f}%"
-
-
-def format_signed_pct(value: float) -> str:
-    sign = "+" if value >= 0 else ""
-    return f"{sign}{value * 100:.2f}%"
 
 
 def get_valid_ticker(requested_ticker: str | None) -> str:

@@ -49,6 +49,19 @@ TARGET_DTE = 30
 DEFAULT_SMILE_LOWER_MONEYNESS = 0.85
 DEFAULT_SMILE_UPPER_MONEYNESS = 1.15
 
+_TICKER_BIAS: dict[str, float] = {
+    "SPY": 0.98,
+    "QQQ": 1.00,
+    "IWM": 1.02,
+    "AAPL": 1.01,
+    "MSFT": 0.99,
+    "NVDA": 0.97,
+    "AMZN": 1.03,
+    "META": 1.00,
+    "TSLA": 0.96,
+    "AMD": 0.98,
+}
+
 
 def _validate_ticker(ticker: str) -> str:
     ticker = (ticker or "").strip().upper()
@@ -87,20 +100,7 @@ def _forecast_vol_from_history(history: pd.DataFrame, ticker: str) -> float:
     if np.isnan(rv60):
         rv60 = rv20
 
-    ticker_bias = {
-        "SPY": 0.98,
-        "QQQ": 1.00,
-        "IWM": 1.02,
-        "AAPL": 1.01,
-        "MSFT": 0.99,
-        "NVDA": 0.97,
-        "AMZN": 1.03,
-        "META": 1.00,
-        "TSLA": 0.96,
-        "AMD": 0.98,
-    }[ticker]
-
-    forecast = (0.65 * rv20 + 0.35 * rv60) * ticker_bias
+    forecast = (0.65 * rv20 + 0.35 * rv60) * _TICKER_BIAS[ticker]
     return float(np.clip(forecast, 0.08, 1.20))
 
 
@@ -126,7 +126,7 @@ def get_live_usable_expiries(ticker: str, max_usable: int = 5) -> tuple[str, ...
 @ttl_cache(maxsize=128)
 def get_live_price_history(ticker: str) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
-    raw = fetch_price_history(ticker, period="1y", interval="1d", auto_adjust=False)
+    raw = fetch_price_history(ticker, period="1y", interval="1d")
     history = normalize_price_history(raw, min_rows=20)
     return history
 
@@ -210,7 +210,7 @@ def get_live_ticker_kpis(ticker: str) -> dict:
     }
 
 
-@ttl_cache(maxsize=32)
+@ttl_cache(maxsize=1)
 def get_live_screener_data() -> pd.DataFrame:
     rows = []
 
@@ -293,15 +293,6 @@ def get_live_expiry_choices(ticker: str) -> list[dict[str, str]]:
 
 
 def get_live_price_chart_frame(ticker: str, display_window: int = 252) -> pd.DataFrame:
-    ticker = _validate_ticker(ticker)
-    history = get_live_price_history(ticker).copy()
-    return history.tail(display_window).reset_index(drop=True)
-
-
-def get_live_volatility_chart_frame(
-    ticker: str,
-    display_window: int = 252,
-) -> pd.DataFrame:
     ticker = _validate_ticker(ticker)
     history = get_live_price_history(ticker).copy()
     return history.tail(display_window).reset_index(drop=True)
